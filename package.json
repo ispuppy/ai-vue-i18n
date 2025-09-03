@@ -1,0 +1,28 @@
+{
+  "name": "ai-vue-i18n",
+  "version": "1.0.0",
+  "description": "使用ai进行自动化翻译生成多语言配置文件",
+  "main": "./dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --config rollup.config.js"
+  },
+  "keywords": [
+    "ai",
+    "vue-i18n",
+    "translate"
+  ],
+  "author": "puppy",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "rollup": "^4.50.0",
+    "rollup-plugin-cleandir": "^3.0.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.2"
+  }
+}
