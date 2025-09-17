@@ -2,6 +2,7 @@ import { cleandir } from "rollup-plugin-cleandir";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from '@rollup/plugin-typescript';
+import json from '@rollup/plugin-json'; // 添加JSON插件
 export default {
   input: "index.ts",
   output: [
@@ -17,6 +18,7 @@ export default {
     typescript({
       tsconfig: './tsconfig.json',
     }),
+    json(), // 添加JSON插件
     resolve(),
     commonjs({ include: /node_modules/ }),
   ],

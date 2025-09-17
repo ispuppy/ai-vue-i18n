@@ -1,7 +1,7 @@
 import path from "path";
 import { parse } from "@vue/compiler-sfc";
 import type { PluginOption } from "../types/index.js";
-import { processTemplate } from "../core/template-loader.js";
+import { templateLoader } from "../core/template-loader.ts";
 
 const validateFileType = (id: string) => {
   if (id.includes("/node_modules/")) {
@@ -11,7 +11,7 @@ const validateFileType = (id: string) => {
   const ext = path.extname(id);
   if (
     fileTypes.includes(ext) &&
-    id === "D:/gitItem/voc-ui-plus/src/pages/date-picker/test.vue"
+    id === "D:/gitItem/voc-ui-plus/src/components/HelloWorld.vue"
   ) {
     return true;
   }
@@ -35,7 +35,7 @@ export default function vueI18nPlugin(): PluginOption {
           console.log(code);
           // 处理template
           if (descriptor.template) {
-            const result = processTemplate(descriptor.template.content);
+            const result = templateLoader.excute(descriptor.template.content);
             code = code.replace(descriptor.template.content, result);
           }
           return { code };

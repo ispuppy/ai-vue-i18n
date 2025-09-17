@@ -1,53 +1,121 @@
+import { BaseUtils } from "./base.ts"
+import * as parser from "@babel/parser"
+import traverse from "@babel/traverse"
+import generate from "@babel/generator"
+
 const tagAttrReg = /(<[^\/\s]+)([^<>]+)(\/?>)/gm
 const attrValueReg = /([^\s]+)=(["'])(((?!\2).)*[\u4e00-\u9fa5]+((?!\2).)*)\2/gim
-
-const getTransformValue = (statement:string, externalQuote:string) => {
-  const internalQuote = externalQuote === '"' ? "'" : '"'
-  const i18nKey = 'test'
-  statement = statement.replace(/(`)(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/g, (_:string, _quote:string, value:string) => {
-    let matchIndex = 0
-    const expressionArr: string[] = []
-    value = value.replace(/\${([^}]+)}/g, (_:string, expression:string) => {
-      expressionArr.push(expression)
-      return `\${${matchIndex++}}`
-    })
-    const key = `${internalQuote}${i18nKey}${internalQuote}`
-    if(expressionArr.length) {
-      return `$t(${key}, [${expressionArr.join(',')}])`
-    } else {
-      return `$t(${key})`
-    }
-  })
-  //替换\' \"
-  statement = statement.replace(/\\'/g, '&sbquo;').replace(/\\"/g, '&quot;')
-  statement = statement.replace(/(['"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gm, (_:string, quote:string, value:string) => {
-    const key = `${internalQuote}${i18nKey}${internalQuote}`
-    return `$t(${quote}${key}${quote})`
-  })
-  return statement
-}
-export const processTemplate = (content: string):string => {
-  content = content.replace(tagAttrReg, (_:string, tag:string, attr:string, end:string) => {
-    attr = attr.replace(attrValueReg, (_attr:string, key:string, quote:string, value:string) => {
-      const whiteList = ['style', 'class', 'src', 'href', 'width', 'height']
-      if(whiteList.includes(key.trim())) {
+const templateReg = /(>)\s*([\{\}\u4e00-\u9fa5]+\s*<\s*span[^@<>]*>[^<>]*<\/span\s*>\s*[^<>]*|[^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm
+class TemplateLoader extends BaseUtils {
+  constructor() {
+    super()
+  }
+  excute(content: string) {
+    content = this.processTagAttr(content)
+    content = this.processTemplate(content)
+    return content
+  }
+  public clearNote(content: string):string {
+    return content.replace(/<!--[\s\S]*?-->/g, '')
+  }
+  public processTagAttr(content: string):string {
+    return content.replace(tagAttrReg, (_:string, tag:string, attr:string, endTag:string) => {
+      attr = attr.replace(attrValueReg, (_attr:string, key:string, quote:string, value:string) => {
+        const whiteList = ['style', 'class', 'src', 'href', 'width', 'height']
+        if(whiteList.includes(key.trim())) {
+          return _attr
+        }
+        if(key.startsWith(':') || key.match(/^(v-|@)/)) {
+          value = this.getTransformValue(value, quote)
+          return `${key}=${quote}${value}${quote}`
+        }
+        if(
+          !['true', 'false'].includes(value)
+          && isNaN(Number(value))
+        ) {
+          value = quote === '"' ? `'${value}'` : `"${value}"`
+          value = this.getTransformValue(value, quote)
+          return `v-bind:${key}=${quote}${value}${quote}`
+        }
         return _attr
-      }
-      if(key.startsWith(':') || key.match(/^(v-|@)/)) {
-        value = getTransformValue(value, quote)
-        return `${key}=${quote}${value}${quote}`
-      }
-      if(!['true', 'false'].includes(value)
-        && isNaN(Number(value))
-      ) {
-        value = quote === '"' ? `'${value}'` : `"${value}"`
-        value = getTransformValue(value, quote)
-        return `v-bind:${key}=${quote}${value}${quote}`
-      }
-      return _attr
+      })
+      return `${tag}${attr}${endTag}`
     })
-
-    return attr
-  })
-  return content
+  }
+  public processTemplate(content: string):string {
+    const replaceTemplateSyntax = (str: string) => {
+      return str.replace(/\$\{([^}]+)\}/g, (_match, p1:string) => {
+        return `" + ${p1} + "`
+      })
+    }
+    
+    return content.replace(templateReg, (_:string, prevSign:string, value:string, afterSign:string) => {
+      value = value.trim()
+      // 先剔除模板字符串，方便后续修改上下文，不然会影响后续的匹配
+      value = replaceTemplateSyntax(value).replace('`" +', '').replace('+ "`', '').replace('`', '"')
+      value = value.replace(/\$\{([^\}]+)\}/gm, (_, value) => {
+        return `\${${this.addContext(value)}}`
+      })
+      // 先以最少匹配模式匹配所有的{{}}，否则多个{{}}会被替换成一个
+      value = value.trim().replace(/\{{([^}]+)(}})/gm, (_, value) => {
+        return `\${${this.addContext(value)}}`
+      })
+      // 兼容有模板字符串的场景
+      value = value.trim().replace(/\{{(.+)(}})/gm, (_, value) => {
+        return `\${${this.addContext(value)}}`
+      })
+      //将所有不在 {{}} 内的内容，用 {{}} 包裹起来
+      value = value.replace(/^((?!{{)[\s\S])+/gm, value => {
+        //前面部分
+        return `{{${JSON.stringify(value)}}}`
+      })
+      value = value.replace(/}}(((?!}})[\s\S])+)$/gm, (_, value) => {
+        //后面部分
+        return `}}{{${JSON.stringify(value)}}}`
+      })
+      //对所有的{{}}内的内容进行国际化替换
+      value = value.replace(/({{)(((?!\1|}}).)+)(}})/gm, (_, prevSign, value, $3, afterSign) => {
+        if (value.indexOf('${') > -1) {
+          value = value.replaceAll('"', '`')
+          value = value.replaceAll('\\`', '"')
+          // value = value.replace(/^["]/, '`')
+          // value = value.replace(/["]$/, '`')
+        }
+        return `${prevSign}${this.getTransformValue(value, '"')}${afterSign}`
+      })
+      value = value.replace(/{{/gm, '')
+      value = value.replace(/}}/gm, '')
+      value = value.replace(/"/gm, "'")
+      value = `<trans v-html="${value.trim()}"></trans>`
+      return `${prevSign}${value}${afterSign}`
+    })
+  }
+  
+  private addContext(code: string):string {
+    const ast = parser.parse(code, {
+      sourceType: 'module',
+    })
+    const traverseFunction = typeof traverse === 'function' ? traverse : traverse.default;
+    (traverseFunction as any)(ast, {
+      Identifier(path: any) {
+        const parent = path.parent
+        const parentType = parent.type
+        if(path.node.name !== '__UNDEF' && (
+          parentType === 'BinaryExpression' ||
+          parentType === 'ExpressionStatement' ||
+          (parentType === 'MemberExpression' && parent.object === path.node) ||
+          (parentType === 'CallExpression' && (parent.callee === path.node || parent.arguments.includes(path.node))) ||
+          (parentType === 'AssignmentExpression' && parent.left === path.node) ||
+          (parentType === 'VariableDeclarator' && parent.init === path.node) ||
+          (parentType === 'LogicalExpression' && (parent.left === path.node || parent.right === path.node)) ||
+          (parentType === 'ConditionalExpression' &&( parent.test === path.node || parent.consequent === path.node || parent.alternate === path.node))
+        )) {
+          path.node.name = `(typeof ${path.node.name} === '__UNDEF' ? this.${path.node.name} : ${path.node.name})`
+        }
+      }
+    })
+    const generatedCode = (generate as any)(ast, {}, code).code
+    return generatedCode.replace(/;$/, '')
+  }
 }
+export const templateLoader = new TemplateLoader()
