@@ -6,7 +6,7 @@ export class BaseUtils {
   }
   public getTransformValue(statement: string, externalQuote: string): string {
     statement = statement.replace(
-      /([`'"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/g,
+      /([`'"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gs,
       (_: string, quote: string, value: string) => {
         let matchIndex = 0;
         const expressionArr: string[] = [];
@@ -16,7 +16,7 @@ export class BaseUtils {
             /\${([^}]+)}/g,
             (_: string, expression: string) => {
               expressionArr.push(expression);
-              return `\${${matchIndex++}}`;
+              return `{${matchIndex++}}`;
             }
           );
         }

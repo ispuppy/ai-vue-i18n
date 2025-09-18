@@ -2,15 +2,18 @@ import { BaseUtils } from "./base.ts"
 import * as parser from "@babel/parser"
 import traverse from "@babel/traverse"
 import generate from "@babel/generator"
+import type { loaderOptions } from "../types/index.ts"
 
-const tagAttrReg = /(<[^\/\s]+)([^<>]+)(\/?>)/gm
-const attrValueReg = /([^\s]+)=(["'])(((?!\2).)*[\u4e00-\u9fa5]+((?!\2).)*)\2/gim
-const templateReg = /(>)\s*([\{\}\u4e00-\u9fa5]+\s*<\s*span[^@<>]*>[^<>]*<\/span\s*>\s*[^<>]*|[^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm
-class TemplateLoader extends BaseUtils {
-  constructor() {
+const tagAttrReg = /(<[^\/\s]+)([^<>]*(?:<[^>]+>[^<>]*)*)(\/?>)/gm
+const attrValueReg = /([^\s]+)=(["'])(((?!\2).)*[\u4e00-\u9fa5]+((?!\2).)*)\2/gims
+const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm
+export class TemplateLoader extends BaseUtils {
+  private options: loaderOptions = {} as loaderOptions
+  constructor(options: loaderOptions) {
     super()
+    this.options = options || {}
   }
-  excute(content: string) {
+  excute(content: string, options: loaderOptions) {
     content = this.processTagAttr(content)
     content = this.processTemplate(content)
     return content
@@ -25,6 +28,7 @@ class TemplateLoader extends BaseUtils {
         if(whiteList.includes(key.trim())) {
           return _attr
         }
+        value = value.trim()
         if(key.startsWith(':') || key.match(/^(v-|@)/)) {
           value = this.getTransformValue(value, quote)
           return `${key}=${quote}${value}${quote}`
@@ -49,21 +53,23 @@ class TemplateLoader extends BaseUtils {
       })
     }
     
-    return content.replace(templateReg, (_:string, prevSign:string, value:string, afterSign:string) => {
+    return content.replace(templateReg, (_:string, tag:string, value:string, endTag:string) => {
       value = value.trim()
       // 先剔除模板字符串，方便后续修改上下文，不然会影响后续的匹配
       value = replaceTemplateSyntax(value).replace('`" +', '').replace('+ "`', '').replace('`', '"')
-      value = value.replace(/\$\{([^\}]+)\}/gm, (_, value) => {
-        return `\${${this.addContext(value)}}`
-      })
-      // 先以最少匹配模式匹配所有的{{}}，否则多个{{}}会被替换成一个
-      value = value.trim().replace(/\{{([^}]+)(}})/gm, (_, value) => {
-        return `\${${this.addContext(value)}}`
-      })
-      // 兼容有模板字符串的场景
-      value = value.trim().replace(/\{{(.+)(}})/gm, (_, value) => {
-        return `\${${this.addContext(value)}}`
-      })
+      if(this.options.vue2) {
+        value = value.replace(/\$\{([^\}]+)\}/gm, (_, value) => {
+          return `\${${this.addContext(value)}}`
+        })
+        // 先以最少匹配模式匹配所有的{{}}，否则多个{{}}会被替换成一个
+        value = value.trim().replace(/\{{([^}]+)(}})/gm, (_, value) => {
+          return `\${${this.addContext(value)}}`
+        })
+        // 兼容有模板字符串的场景
+        value = value.trim().replace(/\{{(.+)(}})/gm, (_, value) => {
+          return `\${${this.addContext(value)}}`
+        })
+      }
       //将所有不在 {{}} 内的内容，用 {{}} 包裹起来
       value = value.replace(/^((?!{{)[\s\S])+/gm, value => {
         //前面部分
@@ -78,16 +84,10 @@ class TemplateLoader extends BaseUtils {
         if (value.indexOf('${') > -1) {
           value = value.replaceAll('"', '`')
           value = value.replaceAll('\\`', '"')
-          // value = value.replace(/^["]/, '`')
-          // value = value.replace(/["]$/, '`')
         }
         return `${prevSign}${this.getTransformValue(value, '"')}${afterSign}`
       })
-      value = value.replace(/{{/gm, '')
-      value = value.replace(/}}/gm, '')
-      value = value.replace(/"/gm, "'")
-      value = `<trans v-html="${value.trim()}"></trans>`
-      return `${prevSign}${value}${afterSign}`
+      return `${tag}${value}${endTag}`
     })
   }
   
@@ -110,7 +110,7 @@ class TemplateLoader extends BaseUtils {
           (parentType === 'LogicalExpression' && (parent.left === path.node || parent.right === path.node)) ||
           (parentType === 'ConditionalExpression' &&( parent.test === path.node || parent.consequent === path.node || parent.alternate === path.node))
         )) {
-          path.node.name = `(typeof ${path.node.name} === '__UNDEF' ? this.${path.node.name} : ${path.node.name})`
+          path.node.name = `(typeof ${path.node.name} === 'undefined' ? this.${path.node.name} : ${path.node.name})`
         }
       }
     })
@@ -118,4 +118,3 @@ class TemplateLoader extends BaseUtils {
     return generatedCode.replace(/;$/, '')
   }
 }
-export const templateLoader = new TemplateLoader()
