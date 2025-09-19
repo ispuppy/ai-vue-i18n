@@ -3,10 +3,7 @@ export interface PluginOption {
   enforce: 'pre' | 'post',
   transform(source: string, id: string): { code: string } | null
 }
-
-export interface loaderOptions {
-  vue2: boolean,
-  vue3: boolean,
-  vite: boolean,
-  webpack: boolean,
+export interface ILoaderOptions {
+  vueVersion: 'vue2' | 'vue3',
+  loaderType: 'webpack' | 'vite',
 }

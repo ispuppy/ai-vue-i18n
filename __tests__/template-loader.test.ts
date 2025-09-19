@@ -1,6 +1,4 @@
-import { TemplateLoader } from "../core/template-loader.ts";
-const templateLoader = new TemplateLoader({ vue2: true })
-
+import { templateLoader } from "../core/template-loader.ts";
 
 describe("template-loader", () => {
   test("should process normal attribute", () => {
@@ -40,20 +38,20 @@ describe("template-loader", () => {
 
 describe("template-loader", () => {
   test("should process template", () => {
-    const input = `<div>测试1{{user.data}}测试2{{data}}{{\`\${data}测试\`}}测试3</div>`
-    const output = templateLoader.processTemplate(input);
+    const input = '<div>测试1{{user.data}}测试{{data}}{{`${data}测试`}}测试3</div>'
+    const output = templateLoader.excute(input, { vueVersion: 'vue2', loaderType: 'vite' });
     expect(output).toBe(
-      "<div>{{$t('2083f6', [(typeof user === 'undefined' ? this.user : user).data,(typeof data === 'undefined' ? this.data : data),(typeof data === 'undefined' ? this.data : data) + \"测试\"])}}</div>"
+      "<div>{{$t('12951e', [(typeof user === 'undefined' ? this.user : user).data,(typeof data === 'undefined' ? this.data : data),(typeof data === 'undefined' ? this.data : data) + $t(\"db06c7\")])}}</div>"
     );
   });
 });
 
 describe("template-loader", () => {
   test("should process template", () => {
-    const input = `<div>测试1{{user.data}}测试2{{data}}{{\`\${data}测试\`}}测试3</div>`
-    const output = templateLoader.processTemplate(input);
+    const input = '<div>测试1{{user.data}}测试{{data}}{{`${data}测试`}}测试3</div>'
+    const output = templateLoader.excute(input, { vueVersion: 'vue3', loaderType: 'vite' });
     expect(output).toBe(
-      "<div>{{$t('2083f6', [(typeof user === 'undefined' ? this.user : user).data,(typeof data === 'undefined' ? this.data : data),(typeof data === 'undefined' ? this.data : data) + \"测试\"])}}</div>"
+      "<div>{{$t('12951e', [user.data,data, data + $t(\"db06c7\")])}}</div>"
     );
   });
 });

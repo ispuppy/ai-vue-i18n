@@ -2,18 +2,18 @@ import { BaseUtils } from "./base.ts"
 import * as parser from "@babel/parser"
 import traverse from "@babel/traverse"
 import generate from "@babel/generator"
-import type { loaderOptions } from "../types/index.ts"
+import { type ILoaderOptions } from "../types/index.ts"
 
 const tagAttrReg = /(<[^\/\s]+)([^<>]*(?:<[^>]+>[^<>]*)*)(\/?>)/gm
 const attrValueReg = /([^\s]+)=(["'])(((?!\2).)*[\u4e00-\u9fa5]+((?!\2).)*)\2/gims
 const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm
-export class TemplateLoader extends BaseUtils {
-  private options: loaderOptions = {} as loaderOptions
-  constructor(options: loaderOptions) {
+class TemplateLoader extends BaseUtils {
+  private options: ILoaderOptions = {} as ILoaderOptions
+  constructor() {
     super()
-    this.options = options || {}
   }
-  excute(content: string, options: loaderOptions) {
+  excute(content: string, options: ILoaderOptions) {
+    this.options = options || {}
     content = this.processTagAttr(content)
     content = this.processTemplate(content)
     return content
@@ -57,19 +57,18 @@ export class TemplateLoader extends BaseUtils {
       value = value.trim()
       // 先剔除模板字符串，方便后续修改上下文，不然会影响后续的匹配
       value = replaceTemplateSyntax(value).replace('`" +', '').replace('+ "`', '').replace('`', '"')
-      if(this.options.vue2) {
-        value = value.replace(/\$\{([^\}]+)\}/gm, (_, value) => {
-          return `\${${this.addContext(value)}}`
-        })
-        // 先以最少匹配模式匹配所有的{{}}，否则多个{{}}会被替换成一个
-        value = value.trim().replace(/\{{([^}]+)(}})/gm, (_, value) => {
-          return `\${${this.addContext(value)}}`
-        })
-        // 兼容有模板字符串的场景
-        value = value.trim().replace(/\{{(.+)(}})/gm, (_, value) => {
-          return `\${${this.addContext(value)}}`
-        })
-      }
+      
+      value = value.replace(/\$\{([^\}]+)\}/gm, (_, value) => {
+        return `\${${this.addContext(value)}}`
+      })
+      // 先以最少匹配模式匹配所有的{{}}，否则多个{{}}会被替换成一个
+      value = value.trim().replace(/\{{([^}]+)(}})/gm, (_, value) => {
+        return `\${${this.addContext(value)}}`
+      })
+      // 兼容有模板字符串的场景
+      value = value.trim().replace(/\{{(.+)(}})/gm, (_, value) => {
+        return `\${${this.addContext(value)}}`
+      })
       //将所有不在 {{}} 内的内容，用 {{}} 包裹起来
       value = value.replace(/^((?!{{)[\s\S])+/gm, value => {
         //前面部分
@@ -80,7 +79,7 @@ export class TemplateLoader extends BaseUtils {
         return `}}{{${JSON.stringify(value)}}}`
       })
       //对所有的{{}}内的内容进行国际化替换
-      value = value.replace(/({{)(((?!\1|}}).)+)(}})/gm, (_, prevSign, value, $3, afterSign) => {
+      value = value.replace(/({{)(((?!\1|}}).)+)(}})/gm, (_, prevSign, value, _$3, afterSign) => {
         if (value.indexOf('${') > -1) {
           value = value.replaceAll('"', '`')
           value = value.replaceAll('\\`', '"')
@@ -92,6 +91,9 @@ export class TemplateLoader extends BaseUtils {
   }
   
   private addContext(code: string):string {
+    if(this.options.vueVersion !== 'vue2') {
+      return code
+    }
     const ast = parser.parse(code, {
       sourceType: 'module',
     })
@@ -118,3 +120,4 @@ export class TemplateLoader extends BaseUtils {
     return generatedCode.replace(/;$/, '')
   }
 }
+export const templateLoader = new TemplateLoader()

@@ -1,6 +1,6 @@
 import path from "path";
 import { parse } from "@vue/compiler-sfc";
-import type { loaderOptions, PluginOption } from "../types/index.ts";
+import type { ILoaderOptions, PluginOption } from "../types/index.ts";
 import { templateLoader } from "../core/template-loader.ts";
 
 const validateFileType = (id: string) => {
@@ -18,7 +18,7 @@ const validateFileType = (id: string) => {
   return false;
 };
 
-export default function vueI18nPlugin(options: loaderOptions): PluginOption {
+export default function vueI18nPlugin(options: ILoaderOptions): PluginOption {
   return {
     name: "vue-i18n-plugin-ai",
     enforce: "pre",
@@ -31,13 +31,12 @@ export default function vueI18nPlugin(options: loaderOptions): PluginOption {
         if (id.endsWith(".vue")) {
           const { descriptor } = parse(source);
           let code = source;
-          debugger;
-          console.log(code);
           // 处理template
           if (descriptor.template) {
             const result = templateLoader.excute(descriptor.template.content, options);
             code = code.replace(descriptor.template.content, result);
           }
+          console.log(descriptor)
           return { code };
         }
 
