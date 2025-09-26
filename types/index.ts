@@ -6,4 +6,5 @@ export interface PluginOption {
 export interface ILoaderOptions {
   vueVersion: 'vue2' | 'vue3',
   loaderType: 'webpack' | 'vite',
+  needReplace: boolean,
 }

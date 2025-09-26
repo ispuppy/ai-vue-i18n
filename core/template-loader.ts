@@ -1,4 +1,4 @@
-import { BaseUtils } from "./base.ts"
+import { BaseUtils, templateReg } from "./base.ts"
 import * as parser from "@babel/parser"
 import traverse from "@babel/traverse"
 import generate from "@babel/generator"
@@ -6,16 +6,15 @@ import { type ILoaderOptions } from "../types/index.ts"
 
 const tagAttrReg = /(<[^\/\s]+)([^<>]*(?:<[^>]+>[^<>]*)*)(\/?>)/gm
 const attrValueReg = /([^\s]+)=(["'])(((?!\2).)*[\u4e00-\u9fa5]+((?!\2).)*)\2/gims
-const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm
-class TemplateLoader extends BaseUtils {
-  private options: ILoaderOptions = {} as ILoaderOptions
-  constructor() {
-    super()
+
+export class TemplateLoader extends BaseUtils {
+  constructor(options: ILoaderOptions) {
+    super(options)
   }
-  excute(content: string, options: ILoaderOptions) {
-    this.options = options || {}
+  excute(content: string) {
     content = this.processTagAttr(content)
     content = this.processTemplate(content)
+    content = this.restore(content)
     return content
   }
   public clearNote(content: string):string {
@@ -89,7 +88,12 @@ class TemplateLoader extends BaseUtils {
       return `${tag}${value}${endTag}`
     })
   }
-  
+  public restore(content: string):string {
+    this.cacheString.forEach((value, key) => {
+      content = content.replace(key, value || '')
+    })
+    return content
+  }
   private addContext(code: string):string {
     if(this.options.vueVersion !== 'vue2') {
       return code
@@ -120,4 +124,3 @@ class TemplateLoader extends BaseUtils {
     return generatedCode.replace(/;$/, '')
   }
 }
-export const templateLoader = new TemplateLoader()
