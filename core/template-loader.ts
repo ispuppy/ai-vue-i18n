@@ -17,10 +17,10 @@ export class TemplateLoader extends BaseUtils {
     content = this.restore(content)
     return content
   }
-  public clearNote(content: string):string {
+  private clearNote(content: string):string {
     return content.replace(/<!--[\s\S]*?-->/g, '')
   }
-  public processTagAttr(content: string):string {
+  private processTagAttr(content: string):string {
     return content.replace(tagAttrReg, (_:string, tag:string, attr:string, endTag:string) => {
       attr = attr.replace(attrValueReg, (_attr:string, key:string, quote:string, value:string) => {
         const whiteList = ['style', 'class', 'src', 'href', 'width', 'height']
@@ -29,7 +29,8 @@ export class TemplateLoader extends BaseUtils {
         }
         value = value.trim()
         if(key.startsWith(':') || key.match(/^(v-|@)/)) {
-          value = this.getTransformValue(value, quote)
+          const { statement } = this.getTransformValue(value, quote)
+          value = statement
           return `${key}=${quote}${value}${quote}`
         }
         if(
@@ -37,7 +38,8 @@ export class TemplateLoader extends BaseUtils {
           && isNaN(Number(value))
         ) {
           value = quote === '"' ? `'${value}'` : `"${value}"`
-          value = this.getTransformValue(value, quote)
+          const { statement } = this.getTransformValue(value, quote)
+          value = statement
           return `v-bind:${key}=${quote}${value}${quote}`
         }
         return _attr
@@ -45,7 +47,7 @@ export class TemplateLoader extends BaseUtils {
       return `${tag}${attr}${endTag}`
     })
   }
-  public processTemplate(content: string):string {
+  private processTemplate(content: string):string {
     const replaceTemplateSyntax = (str: string) => {
       return str.replace(/\$\{([^}]+)\}/g, (_match, p1:string) => {
         return `" + ${p1} + "`
@@ -83,12 +85,13 @@ export class TemplateLoader extends BaseUtils {
           value = value.replaceAll('"', '`')
           value = value.replaceAll('\\`', '"')
         }
-        return `${prevSign}${this.getTransformValue(value, '"')}${afterSign}`
+        const { statement } = this.getTransformValue(value, '"')
+        return `${prevSign}${statement}${afterSign}`
       })
       return `${tag}${value}${endTag}`
     })
   }
-  public restore(content: string):string {
+  private restore(content: string):string {
     this.cacheString.forEach((value, key) => {
       content = content.replace(key, value || '')
     })
