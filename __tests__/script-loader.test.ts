@@ -5,10 +5,11 @@ const commonOptions = {
 }
 fileOperator.setMessage('1e24cf', '测试')
 const vue2ScriptLoader = new ScriptLoader({ vueVersion: 'vue2', loaderType: 'vite', ...commonOptions })
-const vue3ScriptLoader = new ScriptLoader({ vueVersion: 'vue3', loaderType: 'vite', ...commonOptions })
+const vue3ScriptLoaderReplace = new ScriptLoader({ vueVersion: 'vue3', loaderType: 'vite', needReplace: true })
+const vue3ScriptLoaderTranslate = new ScriptLoader({ vueVersion: 'vue3', loaderType: 'vite', needReplace: false })
 
-describe('ScriptLoader', () => {
-  test("should process normal attribute", () => {
+describe('ScriptLoaderForSetup', () => {
+  test("should process normal vue3 script", () => {
     const input = `
 import { defineComponent, ref, toRefs } from 'vue'
 export default defineComponent({
@@ -28,7 +29,7 @@ export default defineComponent({
   }
 })
     `
-    const output = vue3ScriptLoader.excute(input, false);        
+    const output = vue3ScriptLoaderReplace.excute(input, false);        
     expect(output).toBe(`
 import { useI18n } from 'vue-i18n';
 import { defineComponent, ref, toRefs } from 'vue'
@@ -52,4 +53,56 @@ const { t: $t } = useI18n()
     `
     );
   });
+})
+
+describe('ScriptLoaderForTs', () => {
+  test("should process orignal script", () => {
+    const input = `
+const props = withDefaults(
+  defineProps<
+    Partial<DatePickerProps> & {
+      range?: boolean;
+      modelValue?: DatePickerProps["modelValue"];
+      value?: DatePickerProps["modelValue"];
+      weekStart?: number;
+      test: () => void
+    }
+  >(),
+  {
+    type: 'date',
+    startPlaceholder: "开始时间",
+    endPlaceholder: "结束时间",
+    rangeSeparator: "至",
+    unlinkPanels: true,
+    prefixIcon: Canlendar as any,
+    clearIcon: IconClose as any,
+    clearable: true,
+    weekStart: 1,
+  }
+);`
+    const output = vue3ScriptLoaderTranslate.excute(input, false);        
+    expect(output).toBe(`
+const props = withDefaults(
+  defineProps<
+    Partial<DatePickerProps> & {
+      range?: boolean;
+      modelValue?: DatePickerProps["modelValue"];
+      value?: DatePickerProps["modelValue"];
+      weekStart?: number;
+      test: () => void
+    }
+  >(),
+  {
+    type: 'date',
+    startPlaceholder: "开始时间",
+    endPlaceholder: "结束时间",
+    rangeSeparator: "至",
+    unlinkPanels: true,
+    prefixIcon: Canlendar as any,
+    clearIcon: IconClose as any,
+    clearable: true,
+    weekStart: 1,
+  }
+);`)
+  })
 })

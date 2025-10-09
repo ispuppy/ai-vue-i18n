@@ -2,6 +2,12 @@ import crypto from "crypto";
 import type { ILoaderOptions } from "../types/index.ts";
 import { fileOperator } from "./fileOperator.ts";
 
+const nestSymbolMap: Record<string, string> = {
+  '{': '}',
+  '(': ')',
+  '[': ']',
+  '<': '>'
+}
 export const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm;
 export class BaseUtils {
   options: ILoaderOptions;
@@ -148,5 +154,40 @@ export class BaseUtils {
     } else {
       return `$t(${key})`;
     }
+  }
+
+  /**
+   * 获取嵌套符号内的内容
+   * @param content 原始内容
+   * @param symbol 嵌套符号，例如 '{' 和 '}'
+   * @param startIndex 开始索引
+   * @returns 嵌套符号内的内容
+   */
+  public getNestSymbolValue(content: string, symbols: string[] = [], startIndex: number) {
+    const { matchConent } = symbols.reduce((prev, symbol) => {
+      const { startIndex, matchConent } = prev
+      if (!nestSymbolMap[symbol]) {
+        return { startIndex, matchConent}
+      }
+      let braceCount = 0
+      let endIndex = content.length
+      for (let i = startIndex; i < content.length; i++) {
+        if (content[i] === symbol) {
+          braceCount++ 
+        } else if (content[i] === nestSymbolMap[symbol]) {
+          braceCount--
+          if (braceCount === 0) {
+            endIndex = i + 1
+            break
+          }
+        }
+      }
+      if (braceCount !== 0) {
+        return { startIndex, matchConent}
+      }
+      const code = content.substring(startIndex, endIndex)
+      return { startIndex: endIndex, matchConent: matchConent + code }
+    }, { startIndex, matchConent: '' })
+    return matchConent
   }
 }

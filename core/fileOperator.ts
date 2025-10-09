@@ -1,3 +1,4 @@
+import { fileOperator } from './fileOperator';
 import fs from "fs";
 import path from "path";
 
@@ -37,6 +38,30 @@ class FileOperator {
       this.messages = {}
     }
     this.messages[key] = value
+  }
+
+  public getAllFiles(targetFile: string | string[], excludeFiles?: string[] = [], fileFilter?:(fileName:string) => boolean) {
+    if(!Array.isArray(targetFile)) {
+      targetFile = [targetFile]
+    }
+    // 判断targetFile是否是目录
+    if(targetFile.length === 0) {
+      throw new Error('targetFile can not be empty')
+    }
+    const dfs = (files: string[]) => {
+      for(const file of files) {
+        if(fs.statSync(file).isDirectory()) {
+          dfs(fs.readdirSync(file))
+        } else {
+          if(fileOperator?.(file)) {
+            continue
+          }
+          if(excludeFiles?.includes(file)) {
+            continue
+          }
+        }
+      }
+    }
   }
 }
 
