@@ -8,7 +8,7 @@ export class ScriptLoader extends BaseUtils {
   constructor(options: ILoaderOptions) {
     super(options);
   }
-  excute(content: string, isSetup: boolean) {
+  excute(content: string, isSetup: boolean = false) {
     this.isSetup = isSetup;
     content = this.processNote(content);
     return content;

@@ -75,8 +75,8 @@ export class BaseUtils {
       externalQuote
     );
 
-    // 处理需要替换但没有对应key的情况
-    if (needReplace && !fileOperator.getMessage(md5Key)) {
+    // 处理需要替换但没有对应key的情况或者在白名单内的情况
+    if ((needReplace && !fileOperator.getMessage(md5Key)) || this.options.whiteList?.includes(processedValue)) {
       onBreak();
       return this.handleNoTranslationKey(originalMatch, key, processedValue);
     }

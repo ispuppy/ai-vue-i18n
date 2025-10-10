@@ -1,11 +1,15 @@
-import { fileOperator } from './fileOperator';
 import fs from "fs";
 import path from "path";
+import type { ILoaderOptions } from "../types/index.ts";
 
 type MessageType = Record<string, string> | null;
+const exportMap: Record<string, string> = {
+  'ESM': 'export default',
+  'CJS': 'module.exports =',
+}
 class FileOperator {
   messages: MessageType = null;
-
+  config: Partial<ILoaderOptions> | null = null
   private getFileUrl(filePath: string): string {
     try {
       // 确保路径是绝对路径并转换为 file:// URL
@@ -21,11 +25,49 @@ class FileOperator {
     }
   }
 
-  public async initMessage(path: string) {
+  private getExportStatement(type: string) {
+    type = type.toUpperCase()
+    return exportMap[type] || exportMap['ESM']
+  }
+
+  public async getFileContent(filePath: string) {
+    if(fs.existsSync(filePath)) {
+      try { 
+        const fileUrl = this.getFileUrl(filePath);
+        const file = await import(fileUrl);
+        return file.default;
+      } catch (error) {
+        try {
+          const { createRequire } = await import('node:module');
+          const crequire = createRequire(__filename);
+          const file = crequire(filePath);
+          return file
+        } catch (error) {
+          console.error(`导入文件失败: ${filePath}`, error);
+        }
+      }
+    }
+    return null
+  }
+
+  public async getConfig() {
+    if(this.config) {
+      return this.config
+    }
+    const configPath = path.join(process.cwd(), 'ai-vue-i18n.config.js')
+    const config = await this.getFileContent(configPath)
+    this.config = config
+    return config
+  }
+
+  public async initMessage(path: string, clear?: boolean) {
+    if(clear) {
+      this.messages = null
+      return
+    }
     if (!this.messages && fs.existsSync(path)) {
-      const fileUrl = this.getFileUrl(path);
-      const file = await import(fileUrl);
-      this.messages = file.default;
+      const message = await this.getFileContent(path)
+      this.messages = message.default;
     }
   }
 
@@ -40,7 +82,8 @@ class FileOperator {
     this.messages[key] = value
   }
 
-  public getAllFiles(targetFile: string | string[], excludeFiles?: string[] = [], fileFilter?:(fileName:string) => boolean) {
+  public getAllFiles(targetFile: string | string[], excludeFiles: string[] = []) {
+    const results: string[] = []
     if(!Array.isArray(targetFile)) {
       targetFile = [targetFile]
     }
@@ -50,18 +93,29 @@ class FileOperator {
     }
     const dfs = (files: string[]) => {
       for(const file of files) {
+        if(excludeFiles?.includes(file)) {
+          continue
+        }
         if(fs.statSync(file).isDirectory()) {
-          dfs(fs.readdirSync(file))
+          dfs(fs.readdirSync(file).map(item => path.join(file, item)))
         } else {
-          if(fileOperator?.(file)) {
-            continue
-          }
-          if(excludeFiles?.includes(file)) {
-            continue
+          if(['.vue', '.js', '.ts'].includes(path.extname(file))) {
+            results.push(file)
           }
         }
       }
     }
+    dfs(targetFile)
+    return results
+  }
+
+  public async writeMessages(outputDir: string, localeFile: string, exportType: string = 'ESM') {
+    if(!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true })
+    }
+    const exportStatement = this.getExportStatement(exportType)
+    const content = `${exportStatement} ${JSON.stringify(this.messages, null, 2)}`
+    fs.writeFileSync(localeFile, content)
   }
 }
 

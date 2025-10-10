@@ -1,9 +1,12 @@
 import { TemplateLoader } from "../core/template-loader.ts";
-const commonOptions = {
-  needReplace: false,
+export const commonOptions = {
+  loaderType: 'vite' as const,
+  targetFiles: '',
+  outputDir: '',
+  translateList: [],
 }
-const vue2TemplateLoader = new TemplateLoader({ vueVersion: 'vue2', loaderType: 'vite', ...commonOptions })
-const vue3TemplateLoader = new TemplateLoader({ vueVersion: 'vue3', loaderType: 'vite', ...commonOptions })
+const vue2TemplateLoader = new TemplateLoader({ vueVersion: 'vue2', ...commonOptions, needReplace: false })
+const vue3TemplateLoader = new TemplateLoader({ vueVersion: 'vue3', ...commonOptions, needReplace: false })
 
 describe("attr-loader-normal", () => {
   test("should process normal attribute", () => {

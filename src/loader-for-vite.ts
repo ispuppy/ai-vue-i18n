@@ -1,9 +1,9 @@
 import path from "path";
-import { parse } from "@vue/compiler-sfc";
-import type { ILoaderOptions, PluginOption } from "../types/index.ts";
+import type { PluginOption } from "../types/index.ts";
 import { TemplateLoader } from "../core/template-loader.ts";
 import { ScriptLoader } from "../core/script-loader.ts";
 import { fileOperator } from "../core/fileOperator.ts";
+import { getDefaultOptions, getVueModule } from "./util.ts";
 
 const validateFileType = (id: string) => {
   if (id.includes("/node_modules/")) {
@@ -23,20 +23,16 @@ const validateFileType = (id: string) => {
   }
   return false;
 };
-const commonOptions = {
-  needReplace: true,
-  vueVersion: "vue3" as const,
-  loaderType: "vite" as const,
-};
-export default function vueI18nPlugin(options: ILoaderOptions): PluginOption {
+export default function vueI18nPlugin(): PluginOption {
   return {
     name: "vue-i18n-plugin-ai",
     enforce: "pre",
-    transform(code: string, filePath: string) {
+    async transform(code: string, filePath: string) {
       try {
         if (!validateFileType(filePath)) {
           return null;
         }
+        const commonOptions = await getDefaultOptions()
         // 初始化语言包
         const resourcePath = path.normalize(filePath);
         const localeFile = path.normalize(
@@ -57,36 +53,31 @@ export default function vueI18nPlugin(options: ILoaderOptions): PluginOption {
         }
         // 处理vue文件
         else if (filePath.endsWith(".vue")) {
-          const { descriptor } = parse(code);
+          const { template, script, scriptSetup } = getVueModule(
+            code,
+            commonOptions.vueVersion
+          );
           // 处理template
-          if (descriptor.template) {
+          if (template) {
             const templateLoader = new TemplateLoader(commonOptions);
-            const result = templateLoader.excute(descriptor.template.content);
-            code = code.replace(descriptor.template.content, result);
+            const result = templateLoader.excute(template);
+            code = code.replace(template, result);
           }
           // 处理script
-          if (descriptor.script) {
+          if (script) {
             const scriptLoader = new ScriptLoader(commonOptions);
-            const result = scriptLoader.excute(
-              descriptor.script.content,
-              false
-            );
-            code = code.replace(descriptor.script.content, result);
+            const result = scriptLoader.excute(script, false);
+            code = code.replace(script, result);
           }
-          if (descriptor.scriptSetup) {
+          if (scriptSetup) {
             const scriptLoader = new ScriptLoader(commonOptions);
-            const result = scriptLoader.excute(
-              descriptor.scriptSetup.content,
-              true
-            );
-            code = code.replace(descriptor.scriptSetup.content, result);
+            const result = scriptLoader.excute(scriptSetup, true);
+            code = code.replace(scriptSetup, result);
           }
-          console.log(descriptor);
           return { code };
         } else {
           return { code };
         }
-
       } catch (err) {
         console.error("vue3-i18n-plugin error:", err);
         return null;

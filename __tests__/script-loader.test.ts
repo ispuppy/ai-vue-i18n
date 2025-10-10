@@ -1,15 +1,13 @@
 import { ScriptLoader } from "../core/script-loader.ts";
 import { fileOperator } from "../core/fileOperator.ts"
-const commonOptions = {
-  needReplace: true,
-}
+
+import { commonOptions } from "./template-loader.test.ts";
 fileOperator.setMessage('1e24cf', '测试')
-const vue2ScriptLoader = new ScriptLoader({ vueVersion: 'vue2', loaderType: 'vite', ...commonOptions })
-const vue3ScriptLoaderReplace = new ScriptLoader({ vueVersion: 'vue3', loaderType: 'vite', needReplace: true })
-const vue3ScriptLoaderTranslate = new ScriptLoader({ vueVersion: 'vue3', loaderType: 'vite', needReplace: false })
+const vue3ScriptLoaderReplace = new ScriptLoader({ vueVersion: 'vue3', ...commonOptions, needReplace: true })
+const vue3ScriptLoaderTranslate = new ScriptLoader({ vueVersion: 'vue3', ...commonOptions, needReplace: false })
 
 describe('ScriptLoaderForSetup', () => {
-  test("should process normal vue3 script", () => {
+  test("should process normal vue3 setupscript", () => {
     const input = `
 import { defineComponent, ref, toRefs } from 'vue'
 export default defineComponent({
@@ -56,7 +54,7 @@ const { t: $t } = useI18n()
 })
 
 describe('ScriptLoaderForTs', () => {
-  test("should process orignal script", () => {
+  test("should output orignal script", () => {
     const input = `
 const props = withDefaults(
   defineProps<
@@ -106,3 +104,5 @@ const props = withDefaults(
 );`)
   })
 })
+
+
