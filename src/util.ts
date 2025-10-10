@@ -13,13 +13,24 @@ const defaultOptions: ILoaderOptions = {
   exportType: 'ESM',
   translateList: [],
 }
+
+const mergeOptions = (defaultOptions: ILoaderOptions, config: Partial<ILoaderOptions>): ILoaderOptions => {
+  const result:ILoaderOptions = { ...defaultOptions }
+  for (const key in config) {
+    if (Reflect.has(config, key)) {
+      const typedKey = key as keyof ILoaderOptions;
+      const configValue = config[typedKey];
+      if (configValue !== undefined && configValue !== null && configValue !== '') {
+        (result as any)[typedKey] = configValue;
+      }
+    }
+  }
+  return result
+}
 export const getDefaultOptions = async(): Promise<ILoaderOptions> => {
   const config = await fileOperator.getConfig()
   if(!config) throw new Error('ai-vue-i18n config not found')
-  return {
-    ...defaultOptions,
-    ...config,
-  }
+  return mergeOptions(defaultOptions, config)
 }
 
 export const getVueModule = (code:string, vueVersion: IVueVersion) => {
