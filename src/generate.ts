@@ -5,6 +5,8 @@ import type { ILoaderOptions } from "../types/index.ts";
 import { getDefaultOptions, getVueModule } from "./util.ts";
 import { TemplateLoader } from "../core/template-loader.ts";
 import { ScriptLoader } from "../core/script-loader.ts";
+import chalk from "chalk";
+import { executeTranslate } from "./ai-translate/translate.ts";
 
 const generateVueFile = (path: string, options: ILoaderOptions) => {
   const code = fs.readFileSync(path, 'utf-8')
@@ -41,6 +43,7 @@ const generateI18nFiles = async(options: ILoaderOptions) => {
     }
   }
   await fileOperator.writeMessages(outputDir, localeFile, options.exportType)
+  console.log(chalk.green(`中文语言包生成完毕 ➤ ${localeFile}`))
 }
 
 const checkOptions = (options: ILoaderOptions) => {
@@ -61,4 +64,5 @@ export const generate = async() => {
   options.needReplace = false
   checkOptions(options)
   await generateI18nFiles(options)
+  await executeTranslate(options)
 }

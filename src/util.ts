@@ -3,10 +3,16 @@ import type { ILoaderOptions, IVueVersion } from '../types/index.ts';
 import { fileOperator } from '../core/fileOperator.ts';
 import path from 'path';
 
-const defaultOptions: ILoaderOptions = {
+export const defaultOptions: ILoaderOptions = {
   vueVersion: 'vue3',
   loaderType: 'vite',
+  providerType: 'OPENAI',
+  model: '',
+  baseURL: '',
+  apiKey: '',
+  temperature: 0.2,
   needReplace: true,
+  chunkSize: 20,
   targetFiles: [],
   outputDir: path.resolve(process.cwd(), 'src/locale'),
   anchorName: 'zh_cn',
@@ -27,6 +33,7 @@ const mergeOptions = (defaultOptions: ILoaderOptions, config: Partial<ILoaderOpt
   }
   return result
 }
+
 export const getDefaultOptions = async(): Promise<ILoaderOptions> => {
   const config = await fileOperator.getConfig()
   if(!config) throw new Error('ai-vue-i18n config not found')

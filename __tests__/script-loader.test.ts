@@ -1,10 +1,10 @@
 import { ScriptLoader } from "../core/script-loader.ts";
 import { fileOperator } from "../core/fileOperator.ts"
+import { defaultOptions } from "@/util.ts";
 
-import { commonOptions } from "./template-loader.test.ts";
 fileOperator.setMessage('1e24cf', '测试')
-const vue3ScriptLoaderReplace = new ScriptLoader({ vueVersion: 'vue3', ...commonOptions, needReplace: true })
-const vue3ScriptLoaderTranslate = new ScriptLoader({ vueVersion: 'vue3', ...commonOptions, needReplace: false })
+const vue3ScriptLoaderReplace = new ScriptLoader({ ...defaultOptions, vueVersion: 'vue3', needReplace: true })
+const vue3ScriptLoaderTranslate = new ScriptLoader({ ...defaultOptions, vueVersion: 'vue3', needReplace: false })
 
 describe('ScriptLoaderForSetup', () => {
   test("should process normal vue3 setupscript", () => {

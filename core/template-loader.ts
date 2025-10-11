@@ -11,15 +11,18 @@ export class TemplateLoader extends BaseUtils {
   constructor(options: ILoaderOptions) {
     super(options)
   }
+  
   excute(content: string) {
     content = this.processTagAttr(content)
     content = this.processTemplate(content)
     content = this.restore(content)
     return content
   }
+
   private clearNote(content: string):string {
     return content.replace(/<!--[\s\S]*?-->/g, '')
   }
+
   private processTagAttr(content: string):string {
     return content.replace(tagAttrReg, (_:string, tag:string, attr:string, endTag:string) => {
       attr = attr.replace(attrValueReg, (_attr:string, key:string, quote:string, value:string) => {
@@ -47,6 +50,7 @@ export class TemplateLoader extends BaseUtils {
       return `${tag}${attr}${endTag}`
     })
   }
+
   private processTemplate(content: string):string {
     const replaceTemplateSyntax = (str: string) => {
       return str.replace(/\$\{([^}]+)\}/g, (_match, p1:string) => {
@@ -91,12 +95,14 @@ export class TemplateLoader extends BaseUtils {
       return `${tag}${value}${endTag}`
     })
   }
+
   private restore(content: string):string {
     this.cacheString.forEach((value, key) => {
       content = content.replace(key, value || '')
     })
     return content
   }
+
   private addContext(code: string):string {
     if(this.options.vueVersion !== 'vue2') {
       return code

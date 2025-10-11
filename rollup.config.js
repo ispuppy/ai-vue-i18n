@@ -3,6 +3,17 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from '@rollup/plugin-typescript';
 import json from '@rollup/plugin-json'; // 添加JSON插件
+import alias from '@rollup/plugin-alias';
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+alias({
+  entries: [
+    { find: '@', replacement: path.resolve(__dirname, 'src') },
+    { find: '@types', replacement: path.resolve(__dirname, 'types') }
+  ]
+})
 export default {
   input: {
     index: "index.ts",

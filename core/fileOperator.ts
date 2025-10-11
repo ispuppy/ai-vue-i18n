@@ -61,16 +61,13 @@ class FileOperator {
   }
 
   public async initMessage(path: string, clear?: boolean) {
-    if(!fs.existsSync(path)) {
-      throw new Error(`file not found: ${path}`)
-    }
     if(clear) {
       this.messages = null
       return
     }
     if (!this.messages) {
       const message = await this.getFileContent(path)
-      this.messages = message.default;
+      this.messages = message
     }
   }
 
