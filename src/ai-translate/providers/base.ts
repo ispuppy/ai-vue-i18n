@@ -58,7 +58,7 @@ export default class AIProvider {
   }
 
   validateFormat(result: ITranslateResult) {
-    if(!Reflect.has(result, 'result')) {
+    if(!Array.isArray(result)) {
       throw new Error(ERROR_FORMAT_MSG)
     }
     return result

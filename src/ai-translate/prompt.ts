@@ -6,7 +6,7 @@ export const getTranslatePrompt = (sourceTextList: string, targetLanguages: stri
     目标语言列表：
       ${targetLanguages}
     背景说明：
-      1. 这些文字是从vue文件、js文件中提取出来的，可能会存在一些字符串字符串模板，需要保持字符串中的变量，否则将无法运行。
+      1. 这些文字是从vue文件、js文件中提取出来的，可能会存在一些字符串字符串模板，需要保留字符串中的变量，否则将无法运行。
       2. 中文文本列表是一个对象数组，每个对象包含id和text两个键。
         - id: 中文文本的唯一标识符
         - text: 中文文本的内容，即需要翻译的内容
@@ -19,10 +19,11 @@ export const getTranslatePrompt = (sourceTextList: string, targetLanguages: stri
       4. 当只有一次中文字时，可能这个字是个数量的单位，可以用缩写
       5. 译文要和中文原文的语义保持一致，不能改变原文的意思。
       6. 译文不能包含中文字符
+      7. 译文语言要按照目标语言列表来，不要按照示例。示例只是为了说明返回格式。
     返回格式：
       应该返回一个JSON格式的数组，数组中的每个元素是一个对象，对象包含两个键id和results。
         - id: 中文文本列表中的id
-        - results: 一个对象，对象的键是目标语言列表中的语言，值是翻译后的结果。
+        - results: 一个数组，数组中的每一个元素即为翻译后的文本。顺序要求和目标语言列表中的顺序一致。
     示例： 
       输入：
         中文文本列表：
@@ -30,8 +31,8 @@ export const getTranslatePrompt = (sourceTextList: string, targetLanguages: stri
         目标语言列表：
           ["英文", "日文", "韩文"]
       输出：
-        [{"id":1,"results":{"英文":"Hello", "日文":"こんにちは", "韩文":"안녕하세요"}},
-        {"id":2,"results":{"英文":"Hello, {0}","日文":"こんにちは, {0}","韩文":"안녕하세요, {0}"}}]
+        [{"id":1,"results":["Hello", "こんにちは", "안녕하세요"]},
+        {"id":2,"results":["Hello, {0}", "こんにちは, {0}", "안녕하세요, {0}"]}]
   `
 
   return userPrompt

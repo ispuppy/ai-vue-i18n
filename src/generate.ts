@@ -28,7 +28,7 @@ const generateI18nFiles = async(options: ILoaderOptions) => {
   const { targetFiles, outputDir, anchorName = 'zh_cn' } = options;
   const localeFile = path.resolve(outputDir, `${anchorName}.js`);
 
-  await fileOperator.initMessage(localeFile, true);
+  await fileOperator.initMessage(localeFile, options.clearInexistence);
   const files = fileOperator.getAllFiles(targetFiles);
   for (const file of files) {
     if(file.includes(outputDir)){
@@ -42,7 +42,7 @@ const generateI18nFiles = async(options: ILoaderOptions) => {
       scriptLoader.excute(code)
     }
   }
-  await fileOperator.writeMessages(outputDir, localeFile, options.exportType)
+  await fileOperator.writeMessages(outputDir, localeFile, options.exportType, fileOperator.messages)
   console.log(chalk.green(`中文语言包生成完毕 ➤ ${localeFile}`))
 }
 

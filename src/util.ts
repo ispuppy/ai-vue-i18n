@@ -12,7 +12,9 @@ export const defaultOptions: ILoaderOptions = {
   apiKey: '',
   temperature: 0.2,
   needReplace: true,
+  clearInexistence: false,
   chunkSize: 20,
+  parallerSize: 10,
   targetFiles: [],
   outputDir: path.resolve(process.cwd(), 'src/locale'),
   anchorName: 'zh_cn',
@@ -53,4 +55,33 @@ export const getVueModule = (code:string, vueVersion: IVueVersion) => {
     template: '',
     script: '',
   }
+}
+
+export const requestPool = (poolSize: number) => {
+  const requestQueue: Array<() => void> = []
+  let runningCount = 0
+  const executeRequest = async (request: Promise<any>) => {
+    return new Promise((resolve, reject) => {
+      const newRequest = () => {
+        Promise.resolve(request).then((result) => {
+          resolve(result)
+        }).catch((err) => {
+          reject(err)
+        }).finally(() => {
+          runningCount--
+          if(requestQueue.length) {
+            const nexRequest = requestQueue.shift()!
+            runningCount++
+            nexRequest()
+          }
+        })
+      }
+      if(runningCount >= poolSize) {
+        return requestQueue.push(newRequest)
+      }
+      runningCount++
+      newRequest()
+    })
+  }
+  return executeRequest
 }

@@ -2,13 +2,18 @@ import fs from "fs";
 import path from "path";
 import type { ILoaderOptions } from "../types/index.ts";
 
-type MessageType = Record<string, string> | null;
+export type MessageType = Record<string, string> | null;
+type ILanguageFiles = Record<string, { 
+  messages: MessageType,
+  update: boolean
+ }>
 const exportMap: Record<string, string> = {
   'ESM': 'export default',
   'CJS': 'module.exports =',
 }
 class FileOperator {
   messages: MessageType = null;
+  languageFiles: ILanguageFiles = {}
   config: Partial<ILoaderOptions> | null = null
   private getFileUrl(filePath: string): string {
     try {
@@ -109,13 +114,58 @@ class FileOperator {
     return results
   }
 
-  public async writeMessages(outputDir: string, localeFile: string, exportType: string = 'ESM') {
+  public async writeMessages(outputDir: string, localeFile: string, exportType: string = 'ESM', messages: MessageType = null) {
     if(!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true })
     }
     const exportStatement = this.getExportStatement(exportType)
-    const content = `${exportStatement} ${JSON.stringify(this.messages, null, 2)}`
+    const content = `${exportStatement} ${JSON.stringify(messages, null, 2)}`
     fs.writeFileSync(localeFile, content)
+  }
+
+  // 更新翻译文件中的消息
+  public updateTranslateMessages(key: string, id: string, text: string) {
+    const targetFile = this.languageFiles[key]
+    if(targetFile) {
+      if(!targetFile.messages) {
+        targetFile.messages = {}
+      }
+      targetFile.messages[id] = text
+      targetFile.update = true
+    }
+  }
+
+  // 初始化设置翻译文件内容
+  public setTotalTranslateMessages(languageFiles: Record<string, MessageType>, clearInexistence: boolean = false) {
+    this.languageFiles = Object.fromEntries(Object.entries(languageFiles).map(([key, value]) => {
+      let needUpdate = false
+      if(clearInexistence) {
+        const newMessages: MessageType = {}
+        for(const k in value) {
+          if(this.getMessage(k)) {
+            newMessages[k] = value[k] as string
+          } else {
+            needUpdate = true
+          }
+        }
+        value = newMessages
+      }
+      return [key, {
+        messages: value,
+        update: needUpdate
+      }]
+    }))
+  }
+
+  // 保存翻译文件
+  public saveLanguageFiles(outputDir: string, exportType?: string) {
+    for(const key in this.languageFiles) {
+      const targetFile = this.languageFiles[key]!
+      if(targetFile.update) {
+        const localeFile = path.join(outputDir, `${key}.js`)
+        this.writeMessages(outputDir, localeFile, exportType, targetFile.messages)
+      }
+    }
   }
 }
 
