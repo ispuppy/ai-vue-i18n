@@ -1,12 +1,10 @@
-import type { ILoaderOptions, IPrompt } from "@types"
+import type { ILoaderOptions, IPrompt, ITranslationLog } from "@types"
 import AIProvider from "./providers/index.ts"
 import { fileOperator, type MessageType } from "core/fileOperator.ts"
 import path from "path"
 import chalk from "chalk"
 import { getTranslatePrompt } from "./prompt.ts"
 import { requestPool } from "@/util.ts"
-
-
 
 interface IChunk {
   keys: string[];
@@ -42,6 +40,7 @@ const getLanguagesFiles = async (options: ILoaderOptions) => {
 
 // 为每个键收集需要翻译的语言
 const getkeyLanguageMap = (options: ILoaderOptions, languagesFiles: Record<string, MessageType>) => {
+  const translationLog = fileOperator.loadTranslationCache(options.outputDir)
   const keyLanguageMap: Record<string, string[]> = {};
   const { translateList } = options;
   const messages = fileOperator.messages;
@@ -52,9 +51,15 @@ const getkeyLanguageMap = (options: ILoaderOptions, languagesFiles: Record<strin
   for (const key of Object.keys(messages)) {
     const missingLanguages: string[] = [];
     
-    for (const { fileName, name } of translateList) {
+    for (const { fileName } of translateList) {
       const translated = languagesFiles[fileName];
       if (!translated?.[key]) {
+        const cachedItem = translationLog[key]
+        const cacheValue = cachedItem?.[fileName]
+        if (cacheValue) {
+          fileOperator.updateTranslateMessages(fileName, key, cacheValue)
+          continue
+        }
         missingLanguages.push(fileName);
       }
     }
@@ -83,7 +88,6 @@ const getLanguageGroups = (keyLanguageMap: Record<string, string[]>) => {
 }
 
 const getChunks = async (options: ILoaderOptions) => {
-
   const languagesFiles = await getLanguagesFiles(options)
   const keyLanguageMap = getkeyLanguageMap(options, languagesFiles)
   const languageGroups = getLanguageGroups(keyLanguageMap)
@@ -128,7 +132,7 @@ const getTranslatePromise = (analyzePromise: Promise<any>, languages: string[]) 
         }
         results.forEach((text: string, index: number) => {
           const lang = languages[index]!
-          fileOperator.updateTranslateMessages(lang, id,text)
+          fileOperator.updateTranslateMessages(lang, id, text)
         })
       }
 
@@ -146,7 +150,6 @@ export const executeTranslate = async (options: ILoaderOptions) => {
 
   const totalKeys = chunks.reduce((acc, cur) => acc + cur.keys.length, 0)
   console.log(chalk.green(`本次翻译分${chunks.length}组进行请求，共${totalKeys}个翻译项`))
-
   for (const chunk of chunks) {
     const { keys, languages } = chunk
     const keyItems = keys.map(key => ({ id: key, text: messages![key] })) as { id: string, text: string }[]

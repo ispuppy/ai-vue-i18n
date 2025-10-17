@@ -40,3 +40,9 @@ export interface ITranslateResult {
   id: number,
   result: Record<string, string>,
 }
+
+export interface ITranslationLog {
+  [key: string]: {
+    [lang: string]: string
+  }
+}

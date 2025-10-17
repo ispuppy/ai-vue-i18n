@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import type { ILoaderOptions } from "../types/index.ts";
+import type { ILoaderOptions, ITranslationLog } from "../types/index.ts";
+import chalk from "chalk";
 
 export type MessageType = Record<string, string> | null;
 type ILanguageFiles = Record<string, { 
@@ -15,6 +16,7 @@ class FileOperator {
   messages: MessageType = null;
   languageFiles: ILanguageFiles = {}
   config: Partial<ILoaderOptions> | null = null
+  translationLog: ITranslationLog | null = null
   private getFileUrl(filePath: string): string {
     try {
       // 确保路径是绝对路径并转换为 file:// URL
@@ -87,6 +89,7 @@ class FileOperator {
     this.messages[key] = value
   }
 
+  // 获取所有目标文件
   public getAllFiles(targetFile: string | string[], excludeFiles: string[] = []) {
     const results: string[] = []
     if(!Array.isArray(targetFile)) {
@@ -114,6 +117,7 @@ class FileOperator {
     return results
   }
 
+  // 写入翻译文件
   public async writeMessages(outputDir: string, localeFile: string, exportType: string = 'ESM', messages: MessageType = null) {
     if(!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true })
@@ -165,6 +169,32 @@ class FileOperator {
         const localeFile = path.join(outputDir, `${key}.js`)
         this.writeMessages(outputDir, localeFile, exportType, targetFile.messages)
       }
+    }
+  }
+
+  // 获取日志内容
+  public loadTranslationCache (outputDir: string): ITranslationLog {
+    if(this.translationLog) {
+      return this.translationLog
+    }
+    const cachePath = path.join(outputDir, '.translation-cache.json')
+    try {
+      if (fs.existsSync(cachePath)) {
+        this.translationLog = JSON.parse(fs.readFileSync(cachePath, 'utf-8')) as ITranslationLog
+        return this.translationLog
+      }
+    } catch (err) {
+      console.error(chalk.yellow('加载翻译日志文件失败:', err))
+    }
+    return {}
+  }
+
+  public saveTranslationCache (outputDir: string, cache: ITranslationLog) {
+    const cachePath = path.join(outputDir, '.translation-cache.json')
+    try {
+      fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2))
+    } catch (err) {
+      console.error(chalk.yellow('保存翻译日志文件失败:', err))
     }
   }
 }
