@@ -8,7 +8,6 @@ export type IVueVersion = 'vue2' | 'vue3'
 export type IProviderType = 'OPENAI' | 'OLLAMA' | 'DEEPSEEK' | 'LMSTUDIO'
 export interface ILoaderOptions {
   vueVersion: IVueVersion,
-  loaderType: 'webpack' | 'vite',
   providerType: IProviderType,
   model: string,
   baseURL: string,
@@ -16,12 +15,12 @@ export interface ILoaderOptions {
   temperature?: number,
   chunkSize: number,
   parallerSize: number,
-  prompt?: string,
+  systemPrompt?: string,
   needReplace: boolean,
   targetFiles: string[] | string,
   excludeFiles?: string[],
   outputDir: string,
-  anchorName?: string,
+  anchorName: string,
   clearInexistence?: boolean,
   translateList: {
     name: string,

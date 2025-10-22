@@ -2,7 +2,7 @@ import path from "path";
 import fs from 'fs'
 import { fileOperator } from "../core/fileOperator.ts";
 import type { ILoaderOptions } from "../types/index.ts";
-import { getDefaultOptions, getVueModule } from "./util.ts";
+import { getVueModule } from "./util.ts";
 import { TemplateLoader } from "../core/template-loader.ts";
 import { ScriptLoader } from "../core/script-loader.ts";
 import chalk from "chalk";
@@ -25,11 +25,11 @@ const generateVueFile = (path: string, options: ILoaderOptions) => {
   }
 }
 const generateI18nFiles = async(options: ILoaderOptions) => {
-  const { targetFiles, outputDir, anchorName = 'zh_cn' } = options;
+  const { outputDir, anchorName = 'zh_cn' } = options;
   const localeFile = path.resolve(outputDir, `${anchorName}.js`);
 
   await fileOperator.initMessage(localeFile, options.clearInexistence);
-  const files = fileOperator.getAllFiles(targetFiles);
+  const files = fileOperator.getAllFiles(options);
   for (const file of files) {
     if(file.includes(outputDir)){
       continue;
@@ -60,7 +60,7 @@ const checkOptions = (options: ILoaderOptions) => {
 }
 
 export const generate = async() => {
-  const options = await getDefaultOptions()
+  const options = await fileOperator.getConfig(true)
   options.needReplace = false
   checkOptions(options)
   await generateI18nFiles(options)

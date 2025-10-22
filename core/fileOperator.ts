@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { ILoaderOptions, ITranslationLog } from "../types/index.ts";
-import chalk from "chalk";
+import { mergeOptions, validateFileType } from "@/util.ts";
 
 export type MessageType = Record<string, string> | null;
 type ILanguageFiles = Record<string, { 
@@ -15,7 +15,7 @@ const exportMap: Record<string, string> = {
 class FileOperator {
   messages: MessageType = null;
   languageFiles: ILanguageFiles = {}
-  config: Partial<ILoaderOptions> | null = null
+  config: ILoaderOptions | null = null
   translationLog: ITranslationLog | null = null
   private getFileUrl(filePath: string): string {
     try {
@@ -53,18 +53,21 @@ class FileOperator {
           console.error(`导入文件失败: ${filePath}`, error);
         }
       }
+    } else {
+      console.error(`文件不存在: ${filePath}`);
     }
     return null
   }
 
-  public async getConfig() {
-    if(this.config) {
-      return this.config
+  public async getConfig(getNew?: boolean): Promise<ILoaderOptions> {
+    if(this.config && !getNew) {
+      return this.config as ILoaderOptions
     }
     const configPath = path.join(process.cwd(), 'ai-vue-i18n.config.js')
     const config = await this.getFileContent(configPath)
-    this.config = config
-    return config
+    if(!config) throw new Error('ai-vue-i18n config not found')
+    this.config = mergeOptions(config)
+    return getNew ? { ...this.config } :this.config
   }
 
   public async initMessage(path: string, clear?: boolean) {
@@ -90,30 +93,31 @@ class FileOperator {
   }
 
   // 获取所有目标文件
-  public getAllFiles(targetFile: string | string[], excludeFiles: string[] = []) {
+  public getAllFiles(config: ILoaderOptions) {
     const results: string[] = []
-    if(!Array.isArray(targetFile)) {
-      targetFile = [targetFile]
+    let { targetFiles } = config
+    if(!Array.isArray(targetFiles)) {
+      targetFiles = [targetFiles]
     }
-    // 判断targetFile是否是目录
-    if(targetFile.length === 0) {
-      throw new Error('targetFile can not be empty')
+    
+    if(targetFiles.length === 0) {
+      throw new Error('targetFiles can not be empty')
     }
     const dfs = (files: string[]) => {
       for(const file of files) {
-        if(excludeFiles?.includes(file)) {
+        const isDirectory = fs.statSync(file).isDirectory()
+        const isValid = validateFileType(file, config, isDirectory)
+        if(!isValid) {
           continue
         }
-        if(fs.statSync(file).isDirectory()) {
+        if(isDirectory) {
           dfs(fs.readdirSync(file).map(item => path.join(file, item)))
         } else {
-          if(['.vue', '.js', '.ts'].includes(path.extname(file))) {
-            results.push(file)
-          }
+          results.push(file)
         }
       }
     }
-    dfs(targetFile)
+    dfs(targetFiles)
     return results
   }
 
@@ -177,24 +181,34 @@ class FileOperator {
     if(this.translationLog) {
       return this.translationLog
     }
-    const cachePath = path.join(outputDir, '.translation-cache.json')
+    const cachePath = path.join(outputDir, 'translation.json')
     try {
       if (fs.existsSync(cachePath)) {
         this.translationLog = JSON.parse(fs.readFileSync(cachePath, 'utf-8')) as ITranslationLog
         return this.translationLog
       }
     } catch (err) {
-      console.error(chalk.yellow('加载翻译日志文件失败:', err))
+      console.error('加载翻译日志文件失败:', err)
     }
     return {}
   }
 
-  public saveTranslationCache (outputDir: string, cache: ITranslationLog) {
-    const cachePath = path.join(outputDir, '.translation-cache.json')
+  public updateTranslationCache (key: string, lang: string, text: string) {
+    if(!this.translationLog) {
+      this.translationLog = {}
+    }
+    if(!this.translationLog[key]) {
+      this.translationLog[key] = {}
+    }
+    this.translationLog[key][lang] = text
+  }
+
+  public saveTranslationCache (outputDir: string) {
+    const cachePath = path.join(outputDir, 'translation.json')
     try {
-      fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2))
+      fs.writeFileSync(cachePath, JSON.stringify(this.translationLog, null, 2))
     } catch (err) {
-      console.error(chalk.yellow('保存翻译日志文件失败:', err))
+      console.error('保存翻译日志文件失败:', err)
     }
   }
 }

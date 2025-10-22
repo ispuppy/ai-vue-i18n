@@ -133,6 +133,7 @@ const getTranslatePromise = (analyzePromise: Promise<any>, languages: string[]) 
         results.forEach((text: string, index: number) => {
           const lang = languages[index]!
           fileOperator.updateTranslateMessages(lang, id, text)
+          fileOperator.updateTranslationCache(id, lang, text)
         })
       }
 
@@ -154,11 +155,12 @@ export const executeTranslate = async (options: ILoaderOptions) => {
     const { keys, languages } = chunk
     const keyItems = keys.map(key => ({ id: key, text: messages![key] })) as { id: string, text: string }[]
     const languageNames = languages.map(lang => options.translateList.find(item => item.fileName === lang)?.name) as string[]
-    const prompt = getPrompt(keyItems, languageNames, options.prompt)
+    const prompt = getPrompt(keyItems, languageNames, options.systemPrompt)
     const translatePromise = getTranslatePromise(provider.analyze(prompt), languages)
     promiseList.push(executeRequest(translatePromise))
   }
   await Promise.all(promiseList)
   fileOperator.saveLanguageFiles(options.outputDir, options.exportType)
+  fileOperator.saveTranslationCache(options.outputDir)
   console.log(chalk.green(`翻译完成，已保存到 ${options.outputDir}`))
 }

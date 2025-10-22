@@ -1,11 +1,10 @@
 import { parse } from '@vue/compiler-sfc';
+import loaderUtils from 'loader-utils' 
 import type { ILoaderOptions, IVueVersion } from '../types/index.ts';
-import { fileOperator } from '../core/fileOperator.ts';
 import path from 'path';
 
 export const defaultOptions: ILoaderOptions = {
   vueVersion: 'vue3',
-  loaderType: 'vite',
   providerType: 'OPENAI',
   model: '',
   baseURL: '',
@@ -22,7 +21,7 @@ export const defaultOptions: ILoaderOptions = {
   translateList: [],
 }
 
-const mergeOptions = (defaultOptions: ILoaderOptions, config: Partial<ILoaderOptions>): ILoaderOptions => {
+export const mergeOptions = (config: Partial<ILoaderOptions>): ILoaderOptions => {
   const result:ILoaderOptions = { ...defaultOptions }
   for (const key in config) {
     if (Reflect.has(config, key)) {
@@ -36,13 +35,7 @@ const mergeOptions = (defaultOptions: ILoaderOptions, config: Partial<ILoaderOpt
   return result
 }
 
-export const getDefaultOptions = async(): Promise<ILoaderOptions> => {
-  const config = await fileOperator.getConfig()
-  if(!config) throw new Error('ai-vue-i18n config not found')
-  return mergeOptions(defaultOptions, config)
-}
-
-export const getVueModule = (code:string, vueVersion: IVueVersion) => {
+export const getVueModule = (code:string, vueVersion: IVueVersion, loaderContext?: any) => {
   if(vueVersion === 'vue3'){
     const { descriptor } = parse(code);
     return {
@@ -51,11 +44,54 @@ export const getVueModule = (code:string, vueVersion: IVueVersion) => {
       scriptSetup: descriptor.scriptSetup?.content,
     }
   }
+  if(loaderContext) {
+    const query = loaderUtils.parseQuery(loaderContext.resourceQuery || '?')
+     if (query.type === 'script' && query.lang === 'js') {
+      return {
+        template: '',
+        script: code,
+        scriptSetup: '',
+      }
+    }
+  }
+  const [, templateContent = ''] = code.match(/<template[^>]*>((.|\n)*)<\/template>/im) || []
+  //获取script部分
+  const [, scriptContent = ''] = code.match(/<script[^>]*>((.|\n)*)<\/script>/im) || []
   return {
-    template: '',
-    script: '',
+    template: templateContent,
+    script: scriptContent,
+    scriptSetup: '',
   }
 }
+
+export const validateFileType = (filePath: string, options: ILoaderOptions, isDirectory?: boolean) => {
+  if (filePath.includes("node_modules")) {
+    return false;
+  }
+  const { outputDir, excludeFiles = [] } = options;
+  let targetFiles = options.targetFiles
+  if(filePath.includes(outputDir)) {
+    return false;
+  }
+  if(!Array.isArray(targetFiles)) {
+    targetFiles = [targetFiles]
+  }
+  if(targetFiles.every(item => !filePath.includes(item))) {
+    return false;
+  }
+  if(excludeFiles.some(item => filePath.includes(item))) {
+    return false;
+  }
+  if(isDirectory) {
+    return true;
+  }
+  const fileTypes = [".vue", ".js", ".ts", "cjs"];
+  const ext = path.extname(filePath);
+  if (fileTypes.includes(ext) && !(ext === ".ts" && filePath.endsWith(".d.ts"))) {
+    return true;
+  }
+  return false;
+};
 
 export const requestPool = (poolSize: number) => {
   const requestQueue: Array<() => void> = []
