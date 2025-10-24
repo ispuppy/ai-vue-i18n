@@ -1,7 +1,7 @@
 import { parse } from '@vue/compiler-sfc';
-import loaderUtils from 'loader-utils' 
 import type { ILoaderOptions, IVueVersion } from '../types/index.ts';
 import path from 'path';
+
 
 export const defaultOptions: ILoaderOptions = {
   vueVersion: 'vue3',
@@ -35,23 +35,13 @@ export const mergeOptions = (config: Partial<ILoaderOptions>): ILoaderOptions =>
   return result
 }
 
-export const getVueModule = (code:string, vueVersion: IVueVersion, loaderContext?: any) => {
+export const getVueModule = (code:string, vueVersion: IVueVersion) => {
   if(vueVersion === 'vue3'){
     const { descriptor } = parse(code);
     return {
       template: descriptor.template?.content,
       script: descriptor.script?.content,
       scriptSetup: descriptor.scriptSetup?.content,
-    }
-  }
-  if(loaderContext) {
-    const query = loaderUtils.parseQuery(loaderContext.resourceQuery || '?')
-     if (query.type === 'script' && query.lang === 'js') {
-      return {
-        template: '',
-        script: code,
-        scriptSetup: '',
-      }
     }
   }
   const [, templateContent = ''] = code.match(/<template[^>]*>((.|\n)*)<\/template>/im) || []
@@ -96,10 +86,10 @@ export const validateFileType = (filePath: string, options: ILoaderOptions, isDi
 export const requestPool = (poolSize: number) => {
   const requestQueue: Array<() => void> = []
   let runningCount = 0
-  const executeRequest = async (request: Promise<any>) => {
+  const executeRequest = async (request: () => Promise<any>) => {
     return new Promise((resolve, reject) => {
       const newRequest = () => {
-        Promise.resolve(request).then((result) => {
+        Promise.resolve(request()).then((result) => {
           resolve(result)
         }).catch((err) => {
           reject(err)

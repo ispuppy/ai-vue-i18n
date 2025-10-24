@@ -5,11 +5,12 @@ import { ScriptLoader } from "core/script-loader.ts";
 import { TemplateLoader } from "core/template-loader.ts";
 
 export default async function loaderForWebpack(this: any, content: string) {
+   const callBack = this.async();
   try {
     const filePath = this.resourcePath;
     const commonOptions = await fileOperator.getConfig();
     if (!validateFileType(filePath, commonOptions)) {
-      return null;
+      return callBack(null, content);
     }
     const resourcePath = path.normalize(filePath);
     const localeFile = path.normalize(
@@ -19,11 +20,22 @@ export default async function loaderForWebpack(this: any, content: string) {
     if (
       [".js", ".ts", ".cjs"].includes(path.extname(resourcePath))) {
       const scriptLoader = new ScriptLoader(commonOptions);
-      return scriptLoader.excute(content, false);
+      const result = scriptLoader.excute(content, false);
+      return callBack(null, result);
     } else if (filePath.endsWith(".vue")) {
-      const { template, script } = getVueModule(
+      content = content.replace(/(<template[^>]*>)((.|\n)*)(<\/template>)/gim, (_, preTag, content, _$3, afterTag) => {
+        const templateLoader = new TemplateLoader(commonOptions);
+        const result = templateLoader.excute(content);
+        return `${preTag}${result}${afterTag}`
+      })
+      content = content.replace(/(<script[^>]*>)((.|\n)*)(<\/script>)/gim, (_, preTag, content, _$3, afterTag) => {
+        const scriptLoader = new ScriptLoader(commonOptions);
+        const result = scriptLoader.excute(content, false);
+        return `${preTag}${result}${afterTag}`
+      })
+      /* const { template, script } = getVueModule(
         content,
-        commonOptions.vueVersion
+        commonOptions.vueVersion,
       );
       if (template) {
         const templateLoader = new TemplateLoader(commonOptions);
@@ -34,12 +46,12 @@ export default async function loaderForWebpack(this: any, content: string) {
         const scriptLoader = new ScriptLoader(commonOptions);
         const result = scriptLoader.excute(script, false);
         content = content.replace(script, result);
-      }
-      return content;
+      } */
+      return callBack(null, content);
     }
-    return content
+    return callBack(null, content);
   } catch (error) {
     console.error(error);
-    return content;
+    return callBack(error, content);
   }
 }

@@ -22,33 +22,37 @@ export class BaseUtils {
     statement: string,
     externalQuote: string = '"'
   ): { statement: string; hasReplace: boolean } {
-    const matchReg = /([`'"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms;
-    let shouldBreakLoop = false;
+    const matchReg1 = /([`])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms;
+    const matchReg2 = /(['"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms;
+    
     let hasReplace = false;
-    const match = () => statement.match(matchReg) && !shouldBreakLoop;
-    if (!match()) {
-      return { statement, hasReplace };
-    }
     const needReplace = this.options.needReplace;
-    while (match()) {
-      statement = statement.replace(
-        matchReg,
-        (match: string, quote: string, value: string) => {
-          return this.processMatchedString(
-            match,
-            value,
-            quote,
-            externalQuote,
-            needReplace,
-            () => {
-              shouldBreakLoop = true;
-            },
-            () => {
-              hasReplace = true;
-            }
-          );
-        }
-      );
+    for(const matchReg of [matchReg1, matchReg2]) {
+      let shouldBreakLoop = false;
+      const match = () => statement.match(matchReg) && !shouldBreakLoop;
+      if (!match()) {
+        continue;
+      }
+      while (match()) {
+        statement = statement.replace(
+          matchReg,
+          (match: string, quote: string, value: string) => {
+            return this.processMatchedString(
+              match,
+              value,
+              quote,
+              externalQuote,
+              needReplace,
+              () => {
+                shouldBreakLoop = true;
+              },
+              () => {
+                hasReplace = true;
+              }
+            );
+          }
+        );
+      }
     }
     return { statement, hasReplace };
   }

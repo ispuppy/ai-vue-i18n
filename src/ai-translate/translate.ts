@@ -1,6 +1,6 @@
 import type { ILoaderOptions, IPrompt, ITranslationLog } from "@types"
 import AIProvider from "./providers/index.ts"
-import { fileOperator, type MessageType } from "core/fileOperator.ts"
+import { fileOperator, type ILanguageFiles, type MessageType } from "core/fileOperator.ts"
 import path from "path"
 import chalk from "chalk"
 import { getTranslatePrompt } from "./prompt.ts"
@@ -24,12 +24,16 @@ const validateConfig = (config: ILoaderOptions) => {
 
 // 加载所有需要翻译的语言文件
 const getLanguagesFiles = async (options: ILoaderOptions) => {
-  const languagesFileContent: Record<string, MessageType> = {};
+  const languagesFileContent: ILanguageFiles = {};
   for (const { fileName } of options.translateList) {
     const filePath = path.resolve(options.outputDir, `${fileName}.js`);
     try {
-      const translated: Record<string, string> = await fileOperator.getFileContent(filePath);
-      languagesFileContent[fileName] = translated || {}
+      const { exportType, content: translated } = await fileOperator.getFileContent(filePath) || {}
+      languagesFileContent[fileName] = {
+        messages: translated || {},
+        update: false,
+        exportType,
+      }
     } catch (error) {
       console.error(`Error loading translation file ${fileName}:`, error);
     }
@@ -39,20 +43,22 @@ const getLanguagesFiles = async (options: ILoaderOptions) => {
 }
 
 // 为每个键收集需要翻译的语言
-const getkeyLanguageMap = (options: ILoaderOptions, languagesFiles: Record<string, MessageType>) => {
-  const translationLog = fileOperator.loadTranslationCache(options.outputDir)
-  const keyLanguageMap: Record<string, string[]> = {};
-  const { translateList } = options;
+const getkeyLanguageMap = async(options: ILoaderOptions) => {
   const messages = fileOperator.messages;
   if (!messages) {
     console.log(chalk.yellow('No messages need to translate'))
     process.exit(0)
   }
+  const translationLog = fileOperator.loadTranslationCache(options.outputDir)
+  const keyLanguageMap: Record<string, string[]> = {};
+  const { translateList } = options;
+  const languagesFiles = await getLanguagesFiles(options)
   for (const key of Object.keys(messages)) {
     const missingLanguages: string[] = [];
     
     for (const { fileName } of translateList) {
-      const translated = languagesFiles[fileName];
+      const fileItem = languagesFiles[fileName];
+      const { messages: translated } = fileItem || {}
       if (!translated?.[key]) {
         const cachedItem = translationLog[key]
         const cacheValue = cachedItem?.[fileName]
@@ -88,8 +94,7 @@ const getLanguageGroups = (keyLanguageMap: Record<string, string[]>) => {
 }
 
 const getChunks = async (options: ILoaderOptions) => {
-  const languagesFiles = await getLanguagesFiles(options)
-  const keyLanguageMap = getkeyLanguageMap(options, languagesFiles)
+  const keyLanguageMap = await getkeyLanguageMap(options)
   const languageGroups = getLanguageGroups(keyLanguageMap)
 
   const chunkSize = options.chunkSize || 20;
@@ -121,46 +126,63 @@ const getPrompt = (keyItems: { id: string, text: string }[], languageNames: stri
   }
 }
 
-const getTranslatePromise = (analyzePromise: Promise<any>, languages: string[]) => {
+const getTranslatePromise = (analyzePromise: Promise<any>, chunk: IChunk, count: { successCount: number, failCount: number, totalCount: number }) => {
   return new Promise((resolve, reject) => {
     Promise.resolve(analyzePromise).then((list) => {
       for(const item of list) {
         const { id, results } = item
-        if(results.length !== languages.length) {
+        if(results.length !== chunk.languages.length) {
           console.log(chalk.yellow(`id: ${id} 的翻译结果数量与语言数量不一致`))
           continue
         }
         results.forEach((text: string, index: number) => {
-          const lang = languages[index]!
+          const lang = chunk.languages[index]!
           fileOperator.updateTranslateMessages(lang, id, text)
           fileOperator.updateTranslationCache(id, lang, text)
         })
       }
 
       resolve(list)
-    }).catch(reject)
+      count.successCount += 1
+    }).catch((error) => {
+      reject(error)
+      console.log(chalk.redBright(`翻译失败: 原因-${error.message}\n失败项:${chunk.keys.join(',')}`))
+      count.failCount += 1
+    }).finally(() => {
+      const finishedCount = count.successCount + count.failCount
+      const process = `${(finishedCount / count.totalCount * 100).toFixed(2)}%`
+      console.log(chalk.green(`进度 ${process}`))
+    })
   })
 }
-export const executeTranslate = async (options: ILoaderOptions) => {
-  validateConfig(options)
-  const chunks = await getChunks(options)
-  const messages = fileOperator.messages
-  const provider = AIProvider.create(options)
-  const executeRequest = requestPool(Math.max(1, options.parallerSize))
-  const promiseList: Promise<any>[] = []
 
-  const totalKeys = chunks.reduce((acc, cur) => acc + cur.keys.length, 0)
-  console.log(chalk.green(`本次翻译分${chunks.length}组进行请求，共${totalKeys}个翻译项`))
-  for (const chunk of chunks) {
-    const { keys, languages } = chunk
-    const keyItems = keys.map(key => ({ id: key, text: messages![key] })) as { id: string, text: string }[]
-    const languageNames = languages.map(lang => options.translateList.find(item => item.fileName === lang)?.name) as string[]
-    const prompt = getPrompt(keyItems, languageNames, options.systemPrompt)
-    const translatePromise = getTranslatePromise(provider.analyze(prompt), languages)
-    promiseList.push(executeRequest(translatePromise))
+export const executeTranslate = async (options: ILoaderOptions) => {
+  try {
+    validateConfig(options)
+    const chunks = await getChunks(options)
+    const messages = fileOperator.messages
+    const provider = AIProvider.create(options)
+    const executeRequest = requestPool(Math.max(1, options.parallerSize))
+    const promiseList: Promise<any>[] = []
+    const totalKeys = chunks.reduce((acc, cur) => acc + cur.keys.length, 0)
+    const count = { successCount: 0, failCount: 0, totalCount: chunks.length }
+    console.log(chalk.cyan(`本次翻译分${chunks.length}组进行请求，共${totalKeys}个翻译项`))
+    for (const chunk of chunks) {
+      const { keys, languages } = chunk
+      const keyItems = keys.map(key => ({ id: key, text: messages![key] })) as { id: string, text: string }[]
+      const languageNames = languages.map(lang => options.translateList.find(item => item.fileName === lang)?.name) as string[]
+      const prompt = getPrompt(keyItems, languageNames, options.systemPrompt)
+      const translatePromise = () => getTranslatePromise(provider.analyze(prompt), chunk, count)
+      promiseList.push(executeRequest(translatePromise))
+    }
+    await Promise.allSettled(promiseList)
+    fileOperator.saveLanguageFiles(options.outputDir, options.exportType)
+    fileOperator.saveTranslationCache(options.outputDir)
+    console.log(chalk.green(`翻译成功 ${count.successCount} 个项`))
+    count.failCount && console.log(chalk.redBright(`翻译失败 ${count.failCount} 个项，请重新翻译`))
+    count.successCount && console.log(chalk.green(`翻译文件已保存到 ${options.outputDir}`))
+  } catch (error: any) {
+    console.log(chalk.redBright(error.message))
+    process.exit(0)
   }
-  await Promise.all(promiseList)
-  fileOperator.saveLanguageFiles(options.outputDir, options.exportType)
-  fileOperator.saveTranslationCache(options.outputDir)
-  console.log(chalk.green(`翻译完成，已保存到 ${options.outputDir}`))
 }

@@ -8,6 +8,7 @@ import { ScriptLoader } from "../core/script-loader.ts";
 import chalk from "chalk";
 import { executeTranslate } from "./ai-translate/translate.ts";
 
+chalk.level = 3
 const generateVueFile = (path: string, options: ILoaderOptions) => {
   const code = fs.readFileSync(path, 'utf-8')
   const { template, script, scriptSetup } = getVueModule(code, options.vueVersion);
@@ -60,9 +61,14 @@ const checkOptions = (options: ILoaderOptions) => {
 }
 
 export const generate = async() => {
-  const options = await fileOperator.getConfig(true)
-  options.needReplace = false
-  checkOptions(options)
-  await generateI18nFiles(options)
-  await executeTranslate(options)
+  try {
+    const options = await fileOperator.getConfig(true)
+    options.needReplace = false
+    checkOptions(options)
+    await generateI18nFiles(options)
+    await executeTranslate(options)
+  } catch (error: any) {
+    console.log(chalk.red(error.message))
+    process.exit(0)
+  }
 }

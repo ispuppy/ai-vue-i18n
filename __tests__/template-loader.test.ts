@@ -12,6 +12,29 @@ describe("attr-loader-normal", () => {
       '<Test v-model="data" v-bind:empty-text="$t(\'67a398\')" :filter="filter" :value="$t(\'bcc95a\', [data])" :str="$t(\'02f2b9\')" @click="handlerClick($t(\'1e24cf\'), false)" />'
     );
   });
+
+  test("should process normal attribute", () => {
+    const input = `<div
+      class="mtm-click"
+      :data-click-type="
+        JSON.stringify({
+          classify: 'common',
+          action: 'date_range_picker',
+          name: \`日期范围-\${value.join('-')}\`,
+        })"
+    >`
+    const output = vue2TemplateLoader.excute(input); 
+    expect(output).toBe(
+      `<div
+      class="mtm-click"
+      :data-click-type="JSON.stringify({
+          classify: 'common',
+          action: 'date_range_picker',
+          name: $t('c72deb', [value.join('-')]),
+        })"
+    >`
+    );
+  })
 });
 
 describe("attr-loader-insetTag", () => {

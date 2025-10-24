@@ -73,7 +73,6 @@ export class OpenAIProvider extends AIProvider {
         stream: false,
         chatId: v4()
       });
-
       const results = this.parseResponse(response.data);
       return results;
     } catch (error: any) {

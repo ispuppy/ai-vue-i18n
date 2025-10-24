@@ -27,9 +27,7 @@ export default function vueI18nPlugin(): PluginOption {
         }
         // 处理js文件
         if (
-          [".js", ".ts"].includes(path.extname(resourcePath)) &&
-          !resourcePath.includes(commonOptions.outputDir)
-        ) {
+          [".js", ".ts", ".cjs"].includes(path.extname(resourcePath))) {
           const scriptLoader = new ScriptLoader(commonOptions);
           code = scriptLoader.excute(code, false);
           return { code };

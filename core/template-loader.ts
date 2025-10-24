@@ -125,7 +125,7 @@ export class TemplateLoader extends BaseUtils {
           (parentType === 'LogicalExpression' && (parent.left === path.node || parent.right === path.node)) ||
           (parentType === 'ConditionalExpression' &&( parent.test === path.node || parent.consequent === path.node || parent.alternate === path.node))
         )) {
-          path.node.name = `(typeof ${path.node.name} === 'undefined' ? this.${path.node.name} : ${path.node.name})`
+          path.node.name = `(${path.node.name} == null ? this.${path.node.name} : ${path.node.name})`
         }
       }
     })

@@ -91,7 +91,7 @@ export class ScriptLoader extends BaseUtils {
   }
   private generateImportModuleTestReg(moduleName: string) {
     return new RegExp(
-      `import[\\s\\t]+([^\\s\\t]+)[^'"]+["']${moduleName}['"]|(const|let|var)[\\s\\t]+([^\\s\\t]+)[^'"]+['"]${moduleName}['"]`,
+      `import[\\s\\t]+([^\\s\\t{}]+)[^'"]+["']${moduleName}['"]|(const|let|var)[\\s\\t]+([^\\s\\t{}]+)[^'"]+['"]${moduleName}['"]`,
       "im"
     );
   }
@@ -115,10 +115,11 @@ export class ScriptLoader extends BaseUtils {
     }
 
     //若未绑定 $t ，则进行绑定
-    if (content.indexOf("const $t = _i18n_vue.$t.bind(_i18n_vue)") < 0) {
-      injectContent = `${injectContent}
-      let _i18n_vue = new ${moduleVue}();
-      const $t = _i18n_vue.$t.bind(_i18n_vue);`;
+    if (content.indexOf("const $t = _i18n_vue.$t.bind({$i18n: window.global_i18n})") < 0) {
+      injectContent = `
+        const _i18n_vue = new ${moduleVue}();
+        const $t = _i18n_vue.$t.bind({$i18n: window.global_i18n})
+      `;
     }
     content = `${importContent}${content}`;
     content = this.injectAction(injectContent, content);

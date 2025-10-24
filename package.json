@@ -16,8 +16,8 @@
     "translate"
   ],
   "bin": {
-    "translate": "./bin/generate.js",
-    "generate-config": "./bin/config.js"
+    "i18n-translate": "./bin/generate.js",
+    "i18n-config": "./bin/config.js"
   },
   "author": "puppy",
   "license": "ISC",
