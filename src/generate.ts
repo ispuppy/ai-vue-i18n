@@ -26,12 +26,14 @@ const generateVueFile = (path: string, options: ILoaderOptions) => {
   }
 }
 const generateI18nFiles = async(options: ILoaderOptions) => {
-  const { outputDir, anchorName = 'zh_cn' } = options;
+  let { outputDir, anchorName = 'zh_cn' } = options;
+  outputDir = path.normalize(outputDir)
   const localeFile = path.resolve(outputDir, `${anchorName}.js`);
 
   await fileOperator.initMessage(localeFile, options.clearInexistence);
   const files = fileOperator.getAllFiles(options);
-  for (const file of files) {
+  for (let file of files) {
+    file = path.normalize(file)
     if(file.includes(outputDir)){
       continue;
     }

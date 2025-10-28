@@ -1,13 +1,18 @@
+import traverse, { NodePath } from "@babel/traverse";
+import * as parser from "@babel/parser"
 import type { ILoaderOptions } from "../types/index.ts";
 import { BaseUtils } from "./base.ts";
+import { type TemplateLiteral, type Expression, type CallExpression, isExpression } from "@babel/types";
+import generate from "@babel/generator";
 const setupReg = /setup\s*\([^)]*\)\s*{/;
-const commonCachedTypes = ['comment', 'withDefaults', 'defineProps']
+const commonCachedTypes = ['withDefaults', 'defineProps']
 export class ScriptLoader extends BaseUtils {
   isSetup: boolean = false;
   tempCache: Record<string, string> = {};
   constructor(options: ILoaderOptions) {
     super(options);
   }
+
   excute(content: string, isSetup: boolean = false) {
     this.isSetup = isSetup;
     content = this.processNote(content);
@@ -16,31 +21,157 @@ export class ScriptLoader extends BaseUtils {
 
   private processNote(content: string): string {
     let hasReplace = false;
-    // 处理特殊类型，例如注释、defineProps、withDefaults等
+    // 处理特殊类型，例如defineProps、withDefaults等
     content = commonCachedTypes.reduce((prev:string, type:string) => {
       return this.processCachedTypes(prev, type);
     }, content);
     //对包含中文的部分进行替换操作
-    content = content.replace(
-      /(['"`])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gm,
-      (value) => {
-        const { statement, hasReplace: hasReplaceItem } =
-          this.getTransformValue(value);
-        hasReplace = hasReplace || hasReplaceItem;
-        return statement;
-      }
-    );
+    content = this.extractChineseFromCode(content, () => hasReplace = true);
     // 注入替换函数
     if (this.options.needReplace && hasReplace) {
       content = this.injectInstance(content);
     }
     //换回缓存部分
     const matchStr = `(${commonCachedTypes.join('|')})`
-    content = content.replace(new RegExp(`\\/\\*${matchStr}_\\d+\\*\\/`, 'gim'), (match: string) => {
+    content = content.replace(new RegExp(`'comment_${matchStr}_\\d+_comment'`, 'gim'), (match: string) => {
       return this.tempCache[match] || match;
     });
 
     return content;
+  }
+
+  private extractChineseFromCode(code: string, setHasReplace: () => void) {
+    const that = this;
+    try {
+      const ast = parser.parse(code, {
+        sourceType: "module",
+        plugins: ['typescript']
+      });
+      const traverseFunction = typeof traverse === 'function' ? traverse : traverse.default;
+      traverseFunction(ast, {
+        StringLiteral(path) {
+          if (that.isInTypeDefinition(path)) return
+          const stringValue = path.node.value;
+          if (/[\u4e00-\u9fa5]/.test(stringValue)) {
+            const { statement, hasReplace } = that.getTransformValue(`"${stringValue}"`, '"', false);
+            if(hasReplace) {
+              const key = statement.match(/\$t\((['"])(.*)\1.*\)/)?.[2];
+              if(key) {
+                path.replaceWith(that.createTCallNode(key))
+                setHasReplace()
+              }
+            }
+          }
+        },
+        TemplateLiteral(path) {
+          if (that.isInTypeDefinition(path)) return
+          const fullRawContent = that.getTemplateRawContent(path.node)
+          if (/[\u4e00-\u9fa5]/.test(fullRawContent)) {
+            const { statement, hasReplace } = that.getTransformValue(`\`${fullRawContent}\``);
+            if(hasReplace) {
+              const key = statement.match(/\$t\((['"])(.*)\1.*\)/)?.[2];
+              if(key) {
+                const validArgs = path.node.expressions.filter((expr: any): expr is Expression => {
+                  return isExpression(expr); // 仅保留 Expression 类型
+                })
+                path.replaceWith(that.createTCallNode(key, validArgs))
+                setHasReplace()
+              }
+            }
+          }
+        }
+      });
+      const { code: modifiedCode } = (generate as any)(ast, { retainLines: true })
+      return modifiedCode;
+    } catch (error:any) {
+      console.error("代码解析失败：", error.message);
+      return code
+    }
+  }
+
+  // 判断一个节点是否位于 TypeScript 类型定义中
+  private isInTypeDefinition(path: NodePath): boolean {
+    let current: NodePath | null = path;
+    const typeNodeTypes = [
+      // 接口和类型别名
+      "InterfaceDeclaration",
+      "TypeAliasDeclaration",
+      "TSInterfaceDeclaration",
+      "TSTypeAliasDeclaration",
+      // 类型签名和成员
+      "TSPropertySignature",
+      "TSMethodSignature",
+      "TSParameterProperty",
+      // 类型注解和断言
+      "TSTypeAnnotation",
+      "TSTypeAssertion",
+      "TSAsExpression",
+      // 泛型相关
+      "TSGenericTypeAnnotation",
+      "TS type Reference",
+      // 类型字面量
+      "TSTypeLiteral",
+      "TSStringLiteral",
+      "TSNumberLiteral",
+    ];
+    while (current) {
+      const type = current.node.type
+      if (
+        typeNodeTypes.includes(type)
+      ) {
+        return true;
+      }
+      current = current.parentPath;
+    }
+    return false;
+  }
+
+  /**
+   * 还原模板字符串的完整原始内容（包含插值表达式）
+   * @param {object} templateLiteral
+   * @returns {string}
+  */
+  private getTemplateRawContent(templateLiteral: TemplateLiteral): string {
+    let rawContent = "";
+    const { quasis, expressions } = templateLiteral;
+    const exprCodes = expressions.map((exprNode) => {
+      const { code: exprCode } = (generate as any)(exprNode);
+      return exprCode;
+    });
+
+    for (let i = 0; i < quasis.length; i++) {
+      rawContent += quasis[i]?.value.raw || ''
+      if (i < expressions.length) {
+        rawContent += `\${${exprCodes[i]}}`
+      }
+    }
+
+    return rawContent;
+  }
+
+  /**
+   * 生成 $t 调用的 AST 节点（支持可选参数数组）
+   * @param key 国际化 key（如 'asbldf'）
+   * @param args 可选参数数组（如 [this.data, user.data.a] 的 AST 节点）
+   * @returns CallExpression 节点（$t('key', [args...])）
+   */
+  private createTCallNode(key: string, args?: Expression[]): CallExpression {
+    const callArgs: Expression[] = [
+      { type: "StringLiteral", value: key }, // 第一个参数：key
+    ];
+
+    if (args && args.length > 0) {
+      callArgs.push({
+        type: "ArrayExpression",
+        elements: args,
+      });
+    }
+
+    return {
+      type: "CallExpression",
+      callee: { type: "Identifier", name: "$t" }, // 函数名：$t
+      arguments: callArgs,
+    };
   }
 
   private processCachedTypes(content: string, type: string): string {
@@ -57,8 +188,9 @@ export class ScriptLoader extends BaseUtils {
   }
 
   private getCachedKey(type: string, index: number) {
-    return `/*${type}_${index}*/`;
+    return `'comment_${type}_${index}_comment'`;
   }
+
   private processComment(content: string, type: string):string {
     let commentsIndex = 0;
     content = content.replace(
@@ -89,12 +221,14 @@ export class ScriptLoader extends BaseUtils {
     }
     return content;
   }
+  
   private generateImportModuleTestReg(moduleName: string) {
     return new RegExp(
       `import[\\s\\t]+([^\\s\\t{}]+)[^'"]+["']${moduleName}['"]|(const|let|var)[\\s\\t]+([^\\s\\t{}]+)[^'"]+['"]${moduleName}['"]`,
       "im"
     );
   }
+
   private injectInstance(content: string): string {
     if (this.options.vueVersion === "vue2") {
       return this.injectInstanceFor2(content);
@@ -137,6 +271,7 @@ export class ScriptLoader extends BaseUtils {
     }
     return this.injectForScript(content);
   }
+
   public injectForHook(content: string, matchSetup: boolean): string {
     let importContent = "";
     let injectContent = "";
@@ -181,33 +316,5 @@ export class ScriptLoader extends BaseUtils {
       `;
     });
     return content;
-  }
-
-  private injectForSetup(content: string, startIndex: number): string {
-    let braceCount = 1;
-    let endIndex = content.length;
-    for (let i = startIndex; i < content.length; i++) {
-      if (content[i] === "{") {
-        braceCount++;
-      } else if (content[i] === "}") {
-        braceCount--;
-        if (braceCount === 0) {
-          endIndex = i + 1;
-          break;
-        }
-      }
-    }
-    const beforeCode = content.substring(0, startIndex);
-    const afterCode = content.substring(endIndex);
-    let setupCode = content.substring(startIndex, endIndex);
-    const returnReg = /return\s*\{\s*([^}]*)\}[^{}]*}$/;
-    setupCode = setupCode.replace(returnReg, (match, returnCode) => {
-      const params = returnCode.split(",");
-      if (params.includes("$t")) {
-        return match;
-      }
-      return match.replace(returnCode, `$t,\n${returnCode}`);
-    });
-    return `${beforeCode}${setupCode}${afterCode}`;
   }
 }

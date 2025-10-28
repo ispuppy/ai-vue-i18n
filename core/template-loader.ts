@@ -40,10 +40,13 @@ export class TemplateLoader extends BaseUtils {
           !['true', 'false'].includes(value)
           && isNaN(Number(value))
         ) {
-          value = quote === '"' ? `'${value}'` : `"${value}"`
-          const { statement } = this.getTransformValue(value, quote)
+          value = `'${value}'`
+          const { statement, hasReplace } = this.getTransformValue(value, '"', false)
+          if(!hasReplace) {
+            return _attr
+          }
           value = statement
-          return `v-bind:${key}=${quote}${value}${quote}`
+          return `v-bind:${key}="${value}"`
         }
         return _attr
       })

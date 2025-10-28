@@ -6,9 +6,10 @@ const nestSymbolMap: Record<string, string> = {
   '{': '}',
   '(': ')',
   '[': ']',
-  '<': '>'
+  '<': '>',
 }
 export const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm;
+
 export class BaseUtils {
   options: ILoaderOptions;
   cacheString: Map<string, string> = new Map();
@@ -20,22 +21,23 @@ export class BaseUtils {
   }
   public getTransformValue(
     statement: string,
-    externalQuote: string = '"'
+    externalQuote: string = '"',
+    isExpression: boolean = true
   ): { statement: string; hasReplace: boolean } {
-    const matchReg1 = /([`])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms;
-    const matchReg2 = /(['"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms;
+    
+    if(!isExpression) {
+      return this.getNormalTransformValue(statement, externalQuote);
+    }
+    const templateMatchReg = [/([`])(((?!\1).)*)\1/gms, /([`])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms];
+    const normalMatchReg = [/(['"])(((?!\1).)*)\1/gms, /(['"])(((?!\1).)*[\u4e00-\u9fa5]+((?!\1).)*)\1/gms];
     
     let hasReplace = false;
     const needReplace = this.options.needReplace;
-    for(const matchReg of [matchReg1, matchReg2]) {
-      let shouldBreakLoop = false;
-      const match = () => statement.match(matchReg) && !shouldBreakLoop;
-      if (!match()) {
-        continue;
-      }
-      while (match()) {
-        statement = statement.replace(
-          matchReg,
+    for(const matchReg of [templateMatchReg, normalMatchReg]) {
+      const [preMatchReg, contentMatchReg] = matchReg as [RegExp, RegExp];
+      statement = statement.replace(preMatchReg, (preMatch: string) => {
+        return preMatch.replace(
+          contentMatchReg,
           (match: string, quote: string, value: string) => {
             return this.processMatchedString(
               match,
@@ -44,19 +46,39 @@ export class BaseUtils {
               externalQuote,
               needReplace,
               () => {
-                shouldBreakLoop = true;
-              },
-              () => {
                 hasReplace = true;
               }
             );
           }
         );
-      }
+      })
     }
     return { statement, hasReplace };
   }
 
+  /**
+   * 处理普通字符串，不包含表达式
+   */
+  private getNormalTransformValue(
+    statement: string,
+    externalQuote: string = '"'
+  ): { statement: string; hasReplace: boolean } {
+    let hasReplace = false
+    const needReplace = this.options.needReplace;
+    statement = statement.replace(/(['"])((.)*)\1/gms, (match: string, quote: string, value: string) => {
+      return this.processMatchedString(
+        match,
+        value,
+        quote,
+        externalQuote,
+        needReplace,
+        () => {
+          hasReplace = true;
+        }
+      );
+    })
+    return { statement, hasReplace };
+  }
   /**
    * 处理匹配到的字符串，生成对应的翻译函数调用
    */
@@ -66,7 +88,6 @@ export class BaseUtils {
     quote: string,
     externalQuote: string,
     needReplace: boolean,
-    onBreak: () => void,
     onReplace: () => void
   ): string {
     const { processedValue, expressions } = this.processTemplateExpressions(
@@ -78,10 +99,8 @@ export class BaseUtils {
       quote,
       externalQuote
     );
-
     // 处理需要替换但没有对应key的情况或者在白名单内的情况
     if ((needReplace && !fileOperator.getMessage(md5Key)) || this.options.whiteList?.includes(processedValue)) {
-      onBreak();
       return this.handleNoTranslationKey(originalMatch, key, processedValue);
     }
     onReplace();
@@ -159,7 +178,7 @@ export class BaseUtils {
       return `$t(${key})`;
     }
   }
-
+  
   /**
    * 获取嵌套符号内的内容
    * @param content 原始内容

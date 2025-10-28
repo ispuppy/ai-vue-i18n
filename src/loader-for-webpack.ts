@@ -23,15 +23,15 @@ export default async function loaderForWebpack(this: any, content: string) {
       const result = scriptLoader.excute(content, false);
       return callBack(null, result);
     } else if (filePath.endsWith(".vue")) {
-      content = content.replace(/(<template[^>]*>)((.|\n)*)(<\/template>)/gim, (_, preTag, content, _$3, afterTag) => {
+      content = content.replace(/(<template[^>]*>)((.)*)<\/template>/gims, (_, preTag, content) => {
         const templateLoader = new TemplateLoader(commonOptions);
         const result = templateLoader.excute(content);
-        return `${preTag}${result}${afterTag}`
+        return `${preTag}${result}<\/template>`
       })
-      content = content.replace(/(<script[^>]*>)((.|\n)*)(<\/script>)/gim, (_, preTag, content, _$3, afterTag) => {
+      content = content.replace(/(<script[^>]*>)((.)*)<\/script>/gims, (_, preTag, content) => {
         const scriptLoader = new ScriptLoader(commonOptions);
         const result = scriptLoader.excute(content, false);
-        return `${preTag}${result}${afterTag}`
+        return `${preTag}${result}<\/script>`
       })
       /* const { template, script } = getVueModule(
         content,

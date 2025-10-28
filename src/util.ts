@@ -44,9 +44,9 @@ export const getVueModule = (code:string, vueVersion: IVueVersion) => {
       scriptSetup: descriptor.scriptSetup?.content,
     }
   }
-  const [, templateContent = ''] = code.match(/<template[^>]*>((.|\n)*)<\/template>/im) || []
+  const [, templateContent = ''] = code.match(/<template[^>]*>((.)*)<\/template>/ims) || []
   //获取script部分
-  const [, scriptContent = ''] = code.match(/<script[^>]*>((.|\n)*)<\/script>/im) || []
+  const [, scriptContent = ''] = code.match(/<script[^>]*>((.)*)<\/script>/ims) || []
   return {
     template: templateContent,
     script: scriptContent,
@@ -55,10 +55,13 @@ export const getVueModule = (code:string, vueVersion: IVueVersion) => {
 }
 
 export const validateFileType = (filePath: string, options: ILoaderOptions, isDirectory?: boolean) => {
+  filePath = path.normalize(filePath)
   if (filePath.includes("node_modules")) {
     return false;
   }
-  const { outputDir, excludeFiles = [] } = options;
+  let { outputDir, excludeFiles = [] } = options;
+  outputDir = path.normalize(outputDir)
+  excludeFiles = excludeFiles.map(item => path.normalize(item))
   let targetFiles = options.targetFiles
   if(filePath.includes(outputDir)) {
     return false;
@@ -66,6 +69,7 @@ export const validateFileType = (filePath: string, options: ILoaderOptions, isDi
   if(!Array.isArray(targetFiles)) {
     targetFiles = [targetFiles]
   }
+  targetFiles = targetFiles.map(item => path.normalize(item))
   if(targetFiles.every(item => !filePath.includes(item))) {
     return false;
   }
