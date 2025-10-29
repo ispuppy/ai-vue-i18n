@@ -197,16 +197,22 @@ export class BaseUtils {
       }
       let braceCount = 0
       let endIndex = content.length
+      let preText = ''
       for (let i = startIndex; i < content.length; i++) {
         if (content[i] === symbol) {
           braceCount++ 
-        } else if (content[i] === nestSymbolMap[symbol]) {
+        } else if (content[i] === nestSymbolMap[symbol] ) {
+          if(content[i] === '>' && preText === '=') {
+            preText = '>'
+            continue
+          }
           braceCount--
           if (braceCount === 0) {
             endIndex = i + 1
             break
           }
         }
+        preText = content[i]!
       }
       if (braceCount !== 0) {
         return { startIndex, matchConent}
