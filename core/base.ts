@@ -8,7 +8,9 @@ const nestSymbolMap: Record<string, string> = {
   '[': ']',
   '<': '>',
 }
-export const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm;
+// export const templateReg = /(>)\s*([^><]*[\u4e00-\u9fa5]+[^><]*)\s*(<)/gm;
+// export const templateReg = /<\/?[^\/\s>]+[^>]*>((?:(?!<\/?[^\/\s>]+[^>]*>)[\s\S])*(?:[\u4e00-\u9fa5])(?:(?!<\/?[^\/\s>]+[^>]*>)[\s\S])*)<\/?[^\/\s>]+[^>]*>/gm;
+
 
 export class BaseUtils {
   options: ILoaderOptions;
@@ -101,7 +103,8 @@ export class BaseUtils {
     );
     // 处理需要替换但没有对应key的情况或者在白名单内的情况
     if ((needReplace && !fileOperator.getMessage(md5Key)) || this.options.whiteList?.includes(processedValue)) {
-      return this.handleNoTranslationKey(originalMatch, key, processedValue);
+      // return this.handleNoTranslationKey(originalMatch, key, processedValue);
+      return originalMatch;
     }
     onReplace();
     
@@ -155,7 +158,7 @@ export class BaseUtils {
   /**
    * 处理没有翻译键的情况
    */
-  private handleNoTranslationKey(
+  /* private handleNoTranslationKey(
     originalMatch: string,
     key: string,
     value: string
@@ -166,7 +169,7 @@ export class BaseUtils {
       return `$t(${key})`;
     }
     return originalMatch;
-  }
+  } */
 
   /**
    * 生成翻译函数调用

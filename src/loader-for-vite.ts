@@ -28,7 +28,7 @@ export default function vueI18nPlugin(): PluginOption {
         // 处理js文件
         if (
           [".js", ".ts", ".cjs"].includes(path.extname(resourcePath))) {
-          const scriptLoader = new ScriptLoader(commonOptions);
+          const scriptLoader = new ScriptLoader(commonOptions, resourcePath);
           code = scriptLoader.excute(code, false);
           return { code };
         }
@@ -40,18 +40,18 @@ export default function vueI18nPlugin(): PluginOption {
           );
           // 处理template
           if (template) {
-            const templateLoader = new TemplateLoader(commonOptions);
+            const templateLoader = new TemplateLoader(commonOptions, resourcePath);
             const result = templateLoader.excute(template);
             code = code.replace(template, result);
           }
           // 处理script
           if (script) {
-            const scriptLoader = new ScriptLoader(commonOptions);
+            const scriptLoader = new ScriptLoader(commonOptions, resourcePath);
             const result = scriptLoader.excute(script, false);
             code = code.replace(script, result);
           }
           if (scriptSetup) {
-            const scriptLoader = new ScriptLoader(commonOptions);
+            const scriptLoader = new ScriptLoader(commonOptions, resourcePath);
             const result = scriptLoader.excute(scriptSetup, true);
             code = code.replace(scriptSetup, result);
           }

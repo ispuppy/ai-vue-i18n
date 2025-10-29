@@ -10,19 +10,23 @@ import { executeTranslate } from "./ai-translate/translate.ts";
 
 chalk.level = 3
 const generateVueFile = (path: string, options: ILoaderOptions) => {
-  const code = fs.readFileSync(path, 'utf-8')
-  const { template, script, scriptSetup } = getVueModule(code, options.vueVersion);
-  if(template) {
-    const templateLoader = new TemplateLoader(options)
-    templateLoader.excute(template)
-  }
-  if(script) {
-    const scriptLoader = new ScriptLoader(options)
-    scriptLoader.excute(script)
-  }
-  if(scriptSetup) {
-    const scriptLoader = new ScriptLoader(options)
-    scriptLoader.excute(scriptSetup, true)
+  try {
+    const code = fs.readFileSync(path, 'utf-8')
+    const { template, script, scriptSetup } = getVueModule(code, options.vueVersion);
+    if(template) {
+      const templateLoader = new TemplateLoader(options, path)
+      templateLoader.excute(template)
+    }
+    if(script) {
+      const scriptLoader = new ScriptLoader(options, path)
+      scriptLoader.excute(script)
+    }
+    if(scriptSetup) {
+      const scriptLoader = new ScriptLoader(options, path)
+      scriptLoader.excute(scriptSetup, true)
+    }
+  } catch (error: any) {
+    console.log(chalk.red(`解析文件过程发生错误: ${path}\n原因：${error.message}`))
   }
 }
 const generateI18nFiles = async(options: ILoaderOptions) => {
@@ -41,7 +45,7 @@ const generateI18nFiles = async(options: ILoaderOptions) => {
       generateVueFile(file, options)
     } else {
       const code = fs.readFileSync(file, 'utf-8')
-      const scriptLoader = new ScriptLoader(options)
+      const scriptLoader = new ScriptLoader(options, file)
       scriptLoader.excute(code)
     }
   }

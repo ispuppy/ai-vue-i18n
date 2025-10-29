@@ -44,7 +44,7 @@ export const getVueModule = (code:string, vueVersion: IVueVersion) => {
       scriptSetup: descriptor.scriptSetup?.content,
     }
   }
-  const [, templateContent = ''] = code.match(/<template[^>]*>((.)*)<\/template>/ims) || []
+  const [templateContent = ''] = code.match(/<template[^>]*>((.)*)<\/template>/ims) || []
   //获取script部分
   const [, scriptContent = ''] = code.match(/<script[^>]*>((.)*)<\/script>/ims) || []
   return {

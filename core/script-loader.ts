@@ -9,8 +9,10 @@ const commonCachedTypes = ['withDefaults', 'defineProps']
 export class ScriptLoader extends BaseUtils {
   isSetup: boolean = false;
   tempCache: Record<string, string> = {};
-  constructor(options: ILoaderOptions) {
+  path: string = ''
+  constructor(options: ILoaderOptions, path: string = '') {
     super(options);
+    this.path = path
   }
 
   excute(content: string, isSetup: boolean = false) {
@@ -84,7 +86,7 @@ export class ScriptLoader extends BaseUtils {
       const { code: modifiedCode } = (generate as any)(ast, { retainLines: true })
       return modifiedCode;
     } catch (error:any) {
-      console.error("代码解析失败：", error.message);
+      console.error(`script/js模块解析失败：${that.path}\n原因：${error.message}`);
       return code
     }
   }

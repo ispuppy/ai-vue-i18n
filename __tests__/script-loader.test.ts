@@ -9,7 +9,7 @@ const vue3ScriptLoaderTranslate = new ScriptLoader({ ...defaultOptions, vueVersi
 describe('ScriptLoaderForSetup', () => {
   test("should process normal vue3 setupscript", () => {
     const input = `
-import { defineComponent, ref, toRefs } from 'vue'
+import { defineComponent, ref, toRefs } from 'vue';
 export default defineComponent({
   setup(props) {
     const testFn = () => {
@@ -30,25 +30,24 @@ export default defineComponent({
     const output = vue3ScriptLoaderReplace.excute(input, false);        
     expect(output).toBe(`
 import { useI18n } from 'vue-i18n';
-import { defineComponent, ref, toRefs } from 'vue'
+import { defineComponent, ref, toRefs } from 'vue';
 export default defineComponent({
   setup(props) {
 const { t: $t } = useI18n()
     const testFn = () => {
       const testFn2 = () => {
-        return $t('1e24cf')
-      }
+        return $t("1e24cf");
+      };
       return {
         test: testFn2()
-      }
-    }
-    const test2 = ref(testFn().test)
+      };
+    };
+    const test2 = ref(testFn().test);
     return {
       test2
-    }
+    };
   }
-})
-    `
+});`
     );
   });
 })

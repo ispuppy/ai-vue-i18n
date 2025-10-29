@@ -141,7 +141,7 @@ class FileOperator {
       fs.mkdirSync(outputDir, { recursive: true });
     }
     const exportStatement = this.getExportStatement(exportType);
-    const content = `${exportStatement} ${JSON.stringify(messages, null, 2)}`;
+    const content = `/* eslint-disable */\n${exportStatement} ${JSON.stringify(messages, null, 2)}`;
     fs.writeFileSync(localeFile, content);
   }
 

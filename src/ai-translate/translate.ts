@@ -166,6 +166,10 @@ export const executeTranslate = async (options: ILoaderOptions) => {
     const promiseList: Promise<any>[] = []
     const totalKeys = chunks.reduce((acc, cur) => acc + cur.keys.length, 0)
     const count = { successCount: 0, failCount: 0, totalCount: chunks.length }
+    if(!chunks.length) {
+      console.log(chalk.yellow('无中文需要翻译'))
+      process.exit(0)
+    }
     console.log(chalk.cyan(`本次翻译分${chunks.length}组进行请求，共${totalKeys}个翻译项`))
     for (const chunk of chunks) {
       const { keys, languages } = chunk
