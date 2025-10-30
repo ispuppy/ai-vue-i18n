@@ -30,6 +30,31 @@
 ## 一、原理简介
 
 &emsp;&emsp;以下是vue2源码示例代码<br>
+
+```js
+<template>
+  <div>
+    <Child props="参数" />
+    <div>测试</div>
+    <div>{{ data }}</div>
+  </div>
+</template>   
+<script>
+export default {
+   name: 'HelloWorld',
+   components: {
+      Child,
+   },
+   data() {
+      return {
+         data: '文本'
+      }
+   },
+}
+</script>
+
+```
+
 &emsp;&emsp;插件会将文件里的中文文本自动提取出来，如‘参数’、‘文本’等，再将中文生成对应的 md5 作为key，然后调取ai获取翻译值，生成对应的翻译文件如：
 
 ```js
