@@ -24,9 +24,11 @@ export class ScriptLoader extends BaseUtils {
   private processNote(content: string): string {
     let hasReplace = false;
     // 处理特殊类型，例如defineProps、withDefaults等
-    content = commonCachedTypes.reduce((prev:string, type:string) => {
-      return this.processCachedTypes(prev, type);
-    }, content);
+    if(this.options.vueVersion === 'vue3') {
+      content = commonCachedTypes.reduce((prev:string, type:string) => {
+        return this.processCachedTypes(prev, type);
+      }, content);
+    }
     //对包含中文的部分进行替换操作
     content = this.extractChineseFromCode(content, () => hasReplace = true);
     // 注入替换函数

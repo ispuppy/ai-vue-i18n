@@ -2,7 +2,7 @@ import type { ILoaderOptions, IPrompt, IProviderType, ITranslateResult } from "@
 
 const providers: Partial<Record<IProviderType, typeof AIProvider>> = {};
 
-const ERROR_FORMAT_MSG = 'The returned data format does not conform to the specification'
+const ERROR_FORMAT_MSG = '返回的数据格式不符合要求'
 export default class AIProvider {
   config: ILoaderOptions
   constructor(config: ILoaderOptions) {
