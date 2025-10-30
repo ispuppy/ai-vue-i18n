@@ -6,7 +6,7 @@ import { getVueModule } from "./util.ts";
 import { TemplateLoader } from "../core/template-loader.ts";
 import { ScriptLoader } from "../core/script-loader.ts";
 import chalk from "chalk";
-import { executeTranslate } from "./ai-translate/translate.ts";
+import { executeTranslate, getkeyLanguageMap, type IGetKeyLanguageMapResult } from "./ai-translate/translate.ts";
 
 chalk.level = 3
 const generateVueFile = (path: string, options: ILoaderOptions) => {
@@ -29,7 +29,7 @@ const generateVueFile = (path: string, options: ILoaderOptions) => {
     console.log(chalk.red(`解析文件过程发生错误: ${path}\n原因：${error.message}`))
   }
 }
-const generateI18nFiles = async(options: ILoaderOptions) => {
+const generateI18nFiles = async(options: ILoaderOptions, writeMessage: boolean = true) => {
   let { outputDir, anchorName = 'zh_cn' } = options;
   outputDir = path.normalize(outputDir)
   const localeFile = path.resolve(outputDir, `${anchorName}.js`);
@@ -48,6 +48,9 @@ const generateI18nFiles = async(options: ILoaderOptions) => {
       const scriptLoader = new ScriptLoader(options, file)
       scriptLoader.excute(code)
     }
+  }
+  if(!writeMessage) {
+    return
   }
   await fileOperator.writeMessages(outputDir, localeFile, options.exportType, fileOperator.messages)
   console.log(chalk.green(`中文语言包生成完毕 ➤ ${localeFile}`))
@@ -76,5 +79,24 @@ export const generate = async() => {
   } catch (error: any) {
     console.log(chalk.red(error.message))
     process.exit(0)
+  }
+}
+
+export const checkMessage = async(): Promise<IGetKeyLanguageMapResult | null> => {
+  try {
+    const options = await fileOperator.getConfig(true)
+    options.needReplace = false
+    checkOptions(options)
+    await generateI18nFiles(options, false)
+    const res = await getkeyLanguageMap(options, true)
+    if(res) {
+      console.log(chalk.cyan('所有中文均已翻译'))
+    } else {
+      console.log(chalk.yellow('存在中文未翻译，请执行 i18n-translate 命令进行翻译'))
+    }
+    return res
+  } catch (error: any) {
+    console.log(chalk.red(error.message))
+    return {} as IGetKeyLanguageMapResult
   }
 }

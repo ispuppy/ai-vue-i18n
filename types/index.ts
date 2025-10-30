@@ -17,6 +17,7 @@ export interface ILoaderOptions {
   parallerSize: number,
   systemPrompt?: string,
   needReplace: boolean,
+  md5Key?: 'md5_6' | 'md5_16',
   targetFiles: string[] | string,
   excludeFiles?: string[],
   outputDir: string,

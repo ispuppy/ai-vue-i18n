@@ -9,7 +9,8 @@ module.exports = {
   temperature: 0.2,
   chunkSize: 20, // 每个请求翻译数量
   parallerSize: 10, // 并行请求数量
-  prompt: '',
+  systemPrompt: '',
+  md5Key: 'md5_6',
   targetFiles: [path.resolve(process.cwd(), 'src')], // 需要翻译的文件
   excludeFiles: [], // 不需要翻译的文件
   outputDir: path.resolve(process.cwd(), 'src/locale'), // 翻译后的文件存放目录

@@ -15,11 +15,17 @@ const nestSymbolMap: Record<string, string> = {
 export class BaseUtils {
   options: ILoaderOptions;
   cacheString: Map<string, string> = new Map();
+  getMd5Key: (str: string) => string = (str: string) => this.Md5_6(str);
   constructor(options: ILoaderOptions) {
     this.options = options;
+    this.getMd5Key = options.md5Key ===  'md5_16' ? this.Md5_16 : this.Md5_6
   }
   public Md5_6(str: string) {
     return crypto.createHash("md5").update(str).digest("hex").substring(8, 14);
+  }
+
+  public Md5_16(str: string) {
+    return crypto.createHash("md5").update(str).digest("hex").substring(8, 24);
   }
   public getTransformValue(
     statement: string,
@@ -147,7 +153,7 @@ export class BaseUtils {
     quote: string,
     externalQuote: string
   ): {key: string, md5Key: string} {
-    const md5Key = this.Md5_6(value);
+    const md5Key = this.getMd5Key(value);
     const internalQuote = externalQuote === '"' ? "'" : '"';
     const _quote = quote === "`" ? internalQuote : quote;
     const key = `${_quote}${md5Key}${_quote}`;

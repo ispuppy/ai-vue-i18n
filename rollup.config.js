@@ -23,7 +23,7 @@ export default {
     {
       dir: "./dist",
       format: "es",
-      sourcemap: true,
+      sourcemap: false,
       preserveModules: false,
     },
   ],
@@ -31,6 +31,8 @@ export default {
     cleandir(["dist"]),
     typescript({
       tsconfig: './tsconfig.json',
+      // 排除测试文件
+      exclude: ['**/__tests__/**', '**/*.test.ts'],
     }),
     json(), // 添加JSON插件
     resolve(),
