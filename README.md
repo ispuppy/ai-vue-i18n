@@ -296,7 +296,7 @@ module.exports = {
 | 参数 | 必填 | 类型 | 可填值/默认值 | 详细说明 |
 |------|------|------|------|------|
 | vueVersion | 是 | string | 'vue2' 或 'vue3' | 指定Vue版本，影响模板解析和i18n集成方式 |
-| providerType | 是 | string |'OPENAI'、'DEEPSEEK'、'OLLAMA'、'LMSTUDIO' | AI服务提供商，主要还是看接口规范，如果是openai的接口范式（比如deepseek）填openai也可以 |
+| providerType | 是 | string |'OPENAI'、'DEEPSEEK'、<br>'OLLAMA'、'LMSTUDIO' | AI服务提供商，主要还是看接口规范，如果是openai的接口范式（比如deepseek）填openai也可以 |
 | apiKey | 是 | string | 自定义 | AI服务的API密钥，类型是'OLLAMA'、'LMSTUDIO'的话可以不填 |
 | model | 否 | string | 自定义 | 指定AI模型名称，如'gpt-4' |
 | baseURL | 否 | string | 自定义 | AI服务的地址 |
@@ -309,7 +309,7 @@ module.exports = {
 | anchorName | 否 | string | 'zh_cn' | 中文语言包文件名(不含扩展名)，修改后需同步修改导入语句 |
 | clearInexistence | 否 | boolean | false | 是否清除语言包中不存在于源码的key |
 | translateList | 是 | Array<{name: string, fileName: string}> | 默认英文 | 需要翻译的语言列表，格式：[{name:'英文',fileName:'en'}] |
-| chunkSize | 否 | number | 20 | 每批发送给AI的翻译文本数量。如果量多的话，可以先填100. 然后如果有错误的话，再减少这个值。 |
+| chunkSize | 否 | number | 20 | 每批发送给AI的翻译文本数量。<br>如果量多的话，可以先填100. 然后如果有错误的话，再减少这个值。 |
 | parallerSize | 否 | number | 10 | 并发请求数，根据API限制调整 |
 | exportType | 否 | string | 'ESM' | 语言包导出格式，支持'ESM'(import/export)或'CJS'(require/module.exports) |
 | whiteList | 否 | string[] | [] | 白名单中文文本，这些文本不会被翻译 |
