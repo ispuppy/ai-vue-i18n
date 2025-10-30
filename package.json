@@ -1,6 +1,6 @@
 {
   "name": "ai-vue-i18n",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "基于AI的Vue项目自动化国际化工具，能够智能提取代码中的中文内容并生成多语言配置文件，简化Vue项目的i18n开发流程",
   "main": "./dist/index.js",
   "type": "module",
