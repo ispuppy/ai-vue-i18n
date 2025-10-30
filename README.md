@@ -98,8 +98,10 @@ npm install vue-i18n@9
 
 ```bash
 i18n-config
+
 ```
 
+&emsp;&emsp;完整配置参考[这里](#五完整配置参数) <br>
 &emsp;&emsp;执行命令`i18n-config`生成一个`ai-vue-i18n.config.js`配置文件，我列举了部分字段如下：
 
 ```js
