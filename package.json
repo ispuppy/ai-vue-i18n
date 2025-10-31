@@ -1,8 +1,14 @@
 {
   "name": "ai-vue-i18n",
-  "version": "1.0.1",
+  "version": "1.0.7",
   "description": "基于AI的Vue项目自动化国际化工具，能够智能提取代码中的中文内容并生成多语言配置文件，简化Vue项目的i18n开发流程",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "type": "module",
   "types": "./dist/types/index.d.ts",
   "scripts": {
@@ -67,7 +73,6 @@
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
     "typescript": "^5.9.2",
-    "uuid": "^13.0.0",
     "vue-eslint-parser": "^10.2.0"
   }
 }

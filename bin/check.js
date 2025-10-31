@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 try {
-  const resolvedPath = join(__dirname, '../dist/generate.js')
+  const resolvedPath = join(__dirname, '../dist/generate.esm.js')
   const normalizedPath = resolvedPath.replace(/\\/g, "/");
   const url =  new URL(`file://${normalizedPath}`).href;
   const generateModule = await import(url);

@@ -56,11 +56,23 @@ class FileOperator {
         return { exportType: exportType, content: file.default };
       } catch (error) {
         try {
-          const { createRequire } = await import("node:module");
-          const crequire = createRequire(__filename);
-          const file = crequire(filePath);
-          return { exportType: "CJS", content: file };
-        } catch (error) {
+          let content = null;
+          if (exportType === 'ESM') {
+            // 尝试匹配 export default 后面的对象或数组
+            const esmMatch = fileContent.match(/export\s+default\s+([\s\S]+)/);
+            if (esmMatch && esmMatch[1]) {
+              let cleanCode = esmMatch[1].trim();
+              // 移除最后的分号（如果有）
+              if (cleanCode.endsWith(';')) {
+                cleanCode = cleanCode.slice(0, -1).trim();
+              }
+              content = new Function(`return ${cleanCode}`)();
+              if(typeof content === 'object') {
+                return { exportType: 'ESM', content: content };
+              }
+            }
+          } 
+        } catch (err) {
           console.log(`导入文件失败: ${filePath}`, error);
         }
       }

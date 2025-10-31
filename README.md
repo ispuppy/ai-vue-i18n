@@ -122,12 +122,12 @@ npm install vue-i18n@9
 ### 2. 初始化配置
 
 ```bash
-i18n-config
+npx i18n-config
 
 ```
 
 &emsp;&emsp;完整配置参考[这里](#五完整配置参数) <br>
-&emsp;&emsp;执行命令`i18n-config`生成一个`ai-vue-i18n.config.js`配置文件，我列举了部分字段如下：
+&emsp;&emsp;执行命令`npx i18n-config`生成一个`ai-vue-i18n.config.js`配置文件，我列举了部分字段如下：
 
 ```js
 const path = require('path')
@@ -157,7 +157,7 @@ module.exports = {
 ### 3. 执行翻译
 
 ```bash
-i18n-translate
+npx i18n-translate
 ```
 
 &emsp;&emsp;过程大概如下
@@ -308,7 +308,7 @@ module.exports = {
 | i18n-check | 检查当前项目是否有未翻译的中文 |
 | i18n-add-pre-push | 添加git pre-push 钩子。如果执行该命令的话，在每次push代码前会先检查是否有未翻译的中文，有的话将会阻止push代码。如果项目中使用了husky的话，就不需要执行这个命令。在 |
 
-> 注意：如果项目中使用了husky的话，就不需要执行`i18n-add-pre-push`命令。在package.json中配置husky的pre-push钩子即可。
+> 注意：如果项目中使用了husky的话，就不需要执行`npx i18n-add-pre-push`命令。在package.json中配置husky的pre-push钩子即可。
 
 ```json
 "husky": {
@@ -349,3 +349,5 @@ module.exports = {
    - 目前暂不支持jsx语法，如果项目中使用了jsx语法，可能会报这个错。
    - 对于vue3的项目，对 `withDefaults`、`defineProps`等api有做特殊处理，如果是普通字符串用了这些名字可能会导致出错
    - 因为其它原因导致语法解析失败
+3. 启动时报错**Error: EBUSY: resource busy or locked, lstat 'D:\DumpStack.log.tmp'**
+   - 把node_modules删了重新装一下就好

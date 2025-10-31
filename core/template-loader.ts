@@ -6,6 +6,7 @@ import { type ILoaderOptions } from "../types/index.ts"
 import { parse }  from "vue-eslint-parser";
 import MagicString from 'magic-string';
 import type { ESLintProgram, VElement, VExpressionContainer, VText } from "vue-eslint-parser/ast/index"
+import '../pollyfill.js'
 
 const tagAttrReg = /(<[^\/\s>]+)(([^'">`]+=(?:"[^"]*"|'[^']*'|`[^`]*`)*?[^'">`]*?)+)(\/?>)/gm
 const attrValueReg = /([^\s]+)=(["'])(((?!\2).)*[\u4e00-\u9fa5]+((?!\2).)*)\2/gims
@@ -18,7 +19,21 @@ export class TemplateLoader extends BaseUtils {
     this.path = path
   }
   
+  private isExpression(str: string) {
+    try {
+      // 尝试将字符串解析为表达式
+      const ast = parser.parseExpression(str);
+      if(ast.type === 'StringLiteral') {
+        return false
+      }
+      return true
+    } catch {
+      // 如果解析失败，可能是纯文本或无效代码
+      return false;
+    }
+  }
   excute(template: string) {
+    template = this.clearNote(template)
     template = this.processTagAttr(template)
     const processTemplateTag = this.getProcessTemplateTag()
     template = processTemplateTag(true, template)
@@ -149,33 +164,42 @@ export class TemplateLoader extends BaseUtils {
     value = value.trim().replace(/\{{(.+)(}})/gm, (_, value) => {
       return `\${${this.addContext(value)}}`
     })
+
+    const addTemplateTag = (value: string) => {
+      value = value.replace(/^((?!{{)[\s\S])+/gm, value => {
+        //前面部分
+        return `{{${JSON.stringify(value)}}}`
+      })
+      value = value.replace(/}}(((?!}})[\s\S])+)$/gm, (_, value) => {
+        //后面部分
+        return `}}{{${JSON.stringify(value)}}}`
+      })
+      return value
+    }
     //将所有不在 {{}} 内的内容，用 {{}} 包裹起来
-    value = value.replace(/^((?!{{)[\s\S])+/gm, value => {
-      //前面部分
-      return `{{${JSON.stringify(value)}}}`
-    })
-    value = value.replace(/}}(((?!}})[\s\S])+)$/gm, (_, value) => {
-      //后面部分
-      return `}}{{${JSON.stringify(value)}}}`
-    })
+    if(!value.startsWith('{{') || !value.endsWith('}}')) {
+      value = addTemplateTag(value)
+    } else {
+      const match = value.match(/^{{((?!}})[\s\S]+)}}$/gms)
+      const templateValue = match ? match[0].replace(/^{{([\s\S]+)}}$/, '$1') : ''
+      if(templateValue?.includes('{{') && templateValue?.includes('}}')) {
+        value = addTemplateTag(value)
+      }
+    }
+    
     //对所有的{{}}内的内容进行国际化替换
-    return value.replace(/({{)(((?!\1|}}).)+)(}})/gm, (_, prevSign, value, _$3, afterSign) => {
+    return value.replace(/({{)(((?!\1|}}).)+)(}})/gms, (_, prevSign, value, _$3, afterSign) => {
       let hasExpression = false
       if (value.indexOf('${') > -1) {
         value = value.replaceAll('"', '`')
         value = value.replaceAll('\\`', '"')
         hasExpression = true
+      } else {
+        hasExpression = this.isExpression(value) 
       }
       const { statement } = this.getTransformValue(value, '"', hasExpression)
       return `${prevSign}${statement}${afterSign}`
     })
-  }
-
-  private restore(content: string):string {
-    this.cacheString.forEach((value, key) => {
-      content = content.replace(key, value || '')
-    })
-    return content
   }
 
   private addContext(code: string):string {

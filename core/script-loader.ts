@@ -85,7 +85,7 @@ export class ScriptLoader extends BaseUtils {
           }
         }
       });
-      const { code: modifiedCode } = (generate as any)(ast, { retainLines: true })
+      const { code: modifiedCode } = (generate as any)(ast, { retainLines: true, comments: false })
       return modifiedCode;
     } catch (error:any) {
       console.error(`script/js模块解析失败：${that.path}\n原因：${error.message}`);

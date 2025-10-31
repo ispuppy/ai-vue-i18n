@@ -21,11 +21,19 @@ export default {
   },
   output: [
     {
-      dir: "./dist",
-      format: "es",
-      sourcemap: false,
-      preserveModules: false,
+      dir: 'dist',
+      format: 'esm',
+      entryFileNames: '[name].esm.js',
+      chunkFileNames: '[name]-[hash].esm.js'
     },
+    // CJS 格式输出
+    {
+      dir: 'dist',
+      format: 'cjs',
+      entryFileNames: '[name].cjs',
+      chunkFileNames: '[name]-[hash].cjs',
+      exports: 'named'
+    }
   ],
   plugins: [
     cleandir(["dist"]),

@@ -1,7 +1,6 @@
 import axios from 'axios';
 import AIProvider from '../base.ts';
 import AIError from '../../AIError.ts';
-import { v4 } from 'uuid';
 import type { ILoaderOptions, IPrompt, IProviderType, ITranslateResult } from '@types';
 
 export class OpenAIProvider extends AIProvider {
@@ -71,7 +70,6 @@ export class OpenAIProvider extends AIProvider {
         model: this.config.model,
         temperature: this.config.temperature,
         stream: false,
-        chatId: v4()
       });
       const results = this.parseResponse(response.data);
       return results;
