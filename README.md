@@ -116,6 +116,7 @@ npm install vue-i18n@9
 
 **版本推荐**：
 
+- Node >= 16.0.0
 - vue2 项目推荐 vue-i18n 8.x ，使用webpack打包
 - vue3 项目推荐 vue-i18n 9.x ，使用vite打包
 
