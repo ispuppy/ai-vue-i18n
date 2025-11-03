@@ -1,5 +1,5 @@
 import { fileOperator } from "core/fileOperator.ts";
-import { getVueModule, validateFileType } from "./util.ts";
+import { validateFileType } from "./util.ts";
 import path from "path";
 import { ScriptLoader } from "core/script-loader.ts";
 import { TemplateLoader } from "core/template-loader.ts";
@@ -33,6 +33,7 @@ export default async function loaderForWebpack(this: any, content: string) {
         const result = scriptLoader.excute(content, false);
         return `${preTag}${result}<\/script>`
       })
+      
       return callBack(null, content);
     }
     return callBack(null, content);

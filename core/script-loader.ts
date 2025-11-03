@@ -85,7 +85,22 @@ export class ScriptLoader extends BaseUtils {
           }
         }
       });
-      const { code: modifiedCode } = (generate as any)(ast, { retainLines: true, comments: false })
+      const { code: modifiedCode } = (generate as any)
+      (ast,{ 
+        retainLines: true,      // 保持原始行号
+        comments: false,        // 不保留注释
+        compact: false,         // 不压缩代码
+        minified: false,        // 不进行压缩优化
+        sourceMaps: false,      // 不需要source map
+        // 添加ESLint友好的格式化选项
+        semicolons: true,       // 确保语句末尾有分号
+        quotes: "double",       // 使用双引号（根据ESLint常见配置）
+        wrapColumn: 80,
+        indent: {
+          style: "  ",          // 2个空格缩进
+          adjustMultilineComment: true // 调整多行注释缩进
+        },
+      })
       return modifiedCode;
     } catch (error:any) {
       console.error(`script/js模块解析失败：${that.path}\n原因：${error.message}`);
@@ -244,19 +259,15 @@ export class ScriptLoader extends BaseUtils {
     let importContent = "";
     let injectContent = "";
     //判断是否注入vue
-    let matchVue = content.match(this.generateImportModuleTestReg("vue"));
-    let moduleVue = "Vue";
+    const matchVue = content.includes("import Vue from 'vue'")
     if (!matchVue) {
-      importContent = `import Vue from 'vue';\n`;
-    } else {
-      moduleVue = matchVue[1] || matchVue[3] || moduleVue;
+      importContent = `\nimport Vue from 'vue';\n`;
     }
-
     //若未绑定 $t ，则进行绑定
     if (content.indexOf("const $t = _i18n_vue.$t.bind({$i18n: window.global_i18n})") < 0) {
       injectContent = `
-        const _i18n_vue = new ${moduleVue}();
-        const $t = _i18n_vue.$t.bind({$i18n: window.global_i18n})
+        const _i18n_vue = new Vue();
+        const $t = _i18n_vue.$t.bind({$i18n: window.global_i18n})\n
       `;
     }
     content = `${importContent}${content}`;
@@ -282,11 +293,11 @@ export class ScriptLoader extends BaseUtils {
     const matchReg = /import\s+{.*useI18n.*}\s+from\s+(['"])vue-i18n\1/gs;
     const matchI18n = content.match(matchReg);
     if (!matchI18n) {
-      importContent = `\nimport { useI18n } from 'vue-i18n';`;
+      importContent = `\nimport { useI18n } from 'vue-i18n';\n`;
     }
     content = `${importContent}${content}`;
     if (content.indexOf("const { t: $t } = useI18n()") < 0) {
-      injectContent = `const { t: $t } = useI18n()`;
+      injectContent = `const { t: $t } = useI18n();\n`;
     }
 
     if (!matchSetup) {
